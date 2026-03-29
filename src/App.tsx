@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { Toaster } from "sonner";
 import AppSidebar from "@/components/AppSidebar";
 import Index from "./pages/Index";
 import Bokforing from "./pages/Bokforing";
