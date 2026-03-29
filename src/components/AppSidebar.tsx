@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   BookOpen,
@@ -15,68 +14,63 @@ import {
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Översikt", path: "/" },
-  { icon: BookOpen, label: "Bokföring", path: "/bokforing" },
-  { icon: FileText, label: "Fakturering", path: "/fakturering" },
-  { icon: TreePine, label: "Skogsbruksplan", path: "/skog" },
-  { icon: TrendingUp, label: "Prognoser", path: "/prognoser" },
-  { icon: Calculator, label: "Skatteplanering", path: "/skatt" },
-  { icon: BarChart3, label: "Rapporter", path: "/rapporter" },
-  { icon: Link, label: "Integrationer", path: "/integrationer" },
+  { icon: LayoutDashboard, label: "Översikt", active: true },
+  { icon: BookOpen, label: "Bokföring" },
+  { icon: FileText, label: "Fakturering" },
+  { icon: TreePine, label: "Skogsbruksplan" },
+  { icon: TrendingUp, label: "Prognoser" },
+  { icon: Calculator, label: "Skatteplanering" },
+  { icon: BarChart3, label: "Rapporter" },
+  { icon: Link, label: "Integrationer" },
 ];
 
 export default function AppSidebar() {
-  const isMobile = window.innerWidth < 768;
-  const [collapsed, setCollapsed] = useState(isMobile);
-  const location = useLocation();
-  const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 768 : true
+  );
 
   return (
     <aside
       className={cn(
-        "flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 h-screen sticky top-0",
+        "sticky top-0 flex h-screen flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-300",
         collapsed ? "w-[68px]" : "w-[240px]"
       )}
     >
-      {/* Logo */}
-      <div className="flex items-center gap-2 px-4 h-16 border-b border-sidebar-border">
-        <TreePine className="h-7 w-7 text-sidebar-primary shrink-0" />
+      <div className="flex h-16 items-center gap-2 border-b border-sidebar-border px-4">
+        <TreePine className="h-7 w-7 shrink-0 text-sidebar-primary" />
         {!collapsed && (
-          <span className="font-display text-xl text-sidebar-accent-foreground tracking-wide">
+          <span className="font-display text-xl tracking-wide text-sidebar-accent-foreground">
             Skogskoll
           </span>
         )}
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 py-4 space-y-1 px-2">
-        {navItems.map((item) => {
-          const active = location.pathname === item.path;
-          return (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              className={cn(
-                "flex items-center gap-3 w-full rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                active
-                  ? "bg-sidebar-accent text-sidebar-primary"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-              )}
-            >
-              <item.icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
-            </button>
-          );
-        })}
+      <nav className="flex-1 space-y-1 px-2 py-4">
+        {navItems.map((item) => (
+          <button
+            key={item.label}
+            type="button"
+            className={cn(
+              "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+              item.active
+                ? "bg-sidebar-accent text-sidebar-primary"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+            )}
+          >
+            <item.icon className="h-5 w-5 shrink-0" />
+            {!collapsed && <span>{item.label}</span>}
+          </button>
+        ))}
       </nav>
 
-      {/* Collapse toggle */}
       <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="flex items-center justify-center h-12 border-t border-sidebar-border text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors"
+        type="button"
+        onClick={() => setCollapsed((value) => !value)}
+        className="flex h-12 items-center justify-center border-t border-sidebar-border text-sidebar-foreground/50 transition-colors hover:text-sidebar-foreground"
       >
         {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
       </button>
     </aside>
   );
 }
+
