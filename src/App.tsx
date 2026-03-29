@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/AppSidebar";
 import Index from "./pages/Index";
@@ -12,17 +12,18 @@ import Integrationer from "./pages/Integrationer";
 
 const App = () => {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <SidebarProvider>
         <div className="flex min-h-screen w-full bg-background text-foreground">
           <AppSidebar />
-          <div className="flex-1 flex flex-col min-w-0">
-            <header className="h-12 flex items-center border-b border-border md:hidden">
+          <div className="flex min-w-0 flex-1 flex-col">
+            <header className="flex h-12 items-center border-b border-border md:hidden">
               <SidebarTrigger className="ml-2" />
               <span className="ml-2 font-display text-lg text-foreground">Skogskoll</span>
             </header>
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/index" element={<Index />} />
               <Route path="/bokforing" element={<Bokforing />} />
               <Route path="/fakturering" element={<Fakturering />} />
               <Route path="/skogsbruksplan" element={<Skogsbruksplan />} />
@@ -35,7 +36,7 @@ const App = () => {
           </div>
         </div>
       </SidebarProvider>
-    </BrowserRouter>
+    </HashRouter>
   );
 };
 
