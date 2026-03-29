@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Calculator, Zap, ArrowRight, TrendingDown, Lightbulb, Slider as SliderIcon } from "lucide-react";
+import { Calculator, Zap, ArrowRight, TrendingDown, Lightbulb, Sliders as SliderIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
