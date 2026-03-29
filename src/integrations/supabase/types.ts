@@ -545,7 +545,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      seed_demo_data: { Args: { p_user_id: string }; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
