@@ -41,6 +41,7 @@ const App = () => {
       </HashRouter>
       <Toaster position="top-right" />
     </>
+  );
 };
 
 export default App;
