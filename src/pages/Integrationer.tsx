@@ -1,196 +1,99 @@
-import { useState } from "react";
 import { Link2, Building2, Landmark, RefreshCw, CheckCircle2, XCircle, Clock, ArrowDownToLine, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useIntegrations, useBankAccounts, useTaxAccounts, fmt } from "@/hooks/useSkogskollData";
+import { useState } from "react";
 
-interface Integration {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  connected: boolean;
-  lastSync: string | null;
-  saldo: number | null;
-  accountNumber?: string;
-}
-
-const fmt = (n: number) => n.toLocaleString("sv-SE") + " kr";
+const iconMap: Record<string, any> = {
+  bank: Building2,
+  skattekonto: Landmark,
+  skogsbruksplan: ExternalLink,
+};
 
 export default function Integrationer() {
-  const [integrations, setIntegrations] = useState<Integration[]>([
-    {
-      id: "bank",
-      name: "Handelsbanken",
-      description: "Företagskonto – automatisk import av transaktioner",
-      icon: <Building2 className="h-6 w-6" />,
-      connected: true,
-      lastSync: "2024-11-15 08:32",
-      saldo: 342000,
-      accountNumber: "6112 xxx xxx 4",
-    },
-    {
-      id: "skogskonto",
-      name: "Skogskonto (Handelsbanken)",
-      description: "Skogskonto för uppskov av skogsintäkter",
-      icon: <Landmark className="h-6 w-6" />,
-      connected: true,
-      lastSync: "2024-11-15 08:32",
-      saldo: 120000,
-      accountNumber: "6112 xxx xxx 7",
-    },
-    {
-      id: "skatteverket",
-      name: "Skatteverket",
-      description: "Skattekonto – se saldo och kommande inbetalningar",
-      icon: <Landmark className="h-6 w-6" />,
-      connected: false,
-      lastSync: null,
-      saldo: null,
-    },
-    {
-      id: "skogsbruksplan",
-      name: "Min Skogsbruksplan (pcSKOG)",
-      description: "Importera bestånddata från pcSKOG eller Skogsappen",
-      icon: <ExternalLink className="h-6 w-6" />,
-      connected: false,
-      lastSync: null,
-      saldo: null,
-    },
-  ]);
-
+  const { data: integrations = [] } = useIntegrations();
+  const { data: bankAccounts = [] } = useBankAccounts();
+  const { data: taxAccounts = [] } = useTaxAccounts();
   const [syncing, setSyncing] = useState<string | null>(null);
-
-  const handleConnect = (id: string) => {
-    setIntegrations((prev) =>
-      prev.map((i) =>
-        i.id === id
-          ? {
-              ...i,
-              connected: true,
-              lastSync: new Date().toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "short" }),
-              saldo: id === "skatteverket" ? -85000 : i.saldo,
-            }
-          : i
-      )
-    );
-    toast.success("Kopplad!", { description: `Integrationen är nu aktiv.` });
-  };
-
-  const handleDisconnect = (id: string) => {
-    setIntegrations((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, connected: false, lastSync: null, saldo: null } : i))
-    );
-    toast.info("Frånkopplad");
-  };
 
   const handleSync = (id: string) => {
     setSyncing(id);
     setTimeout(() => {
-      setIntegrations((prev) =>
-        prev.map((i) =>
-          i.id === id
-            ? { ...i, lastSync: new Date().toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "short" }) }
-            : i
-        )
-      );
       setSyncing(null);
-      toast.success("Synkronisering klar", { description: "Transaktioner har hämtats." });
+      toast.success("Synkronisering klar");
     }, 1500);
   };
 
-  const connectedCount = integrations.filter((i) => i.connected).length;
+  const connectedCount = integrations.filter(i => i.status === "connected").length;
+
+  // Combine integration info with account data
+  const enriched = integrations.map(intg => {
+    const Icon = iconMap[intg.type] || ExternalLink;
+    let saldo: number | null = null;
+    let accountInfo = "";
+
+    if (intg.type === "bank") {
+      const accounts = bankAccounts.filter(a => a.bank_name.toLowerCase().includes(intg.provider.toLowerCase()));
+      saldo = accounts.reduce((s, a) => s + a.current_balance, 0);
+      accountInfo = accounts.map(a => a.account_number_masked).filter(Boolean).join(", ");
+    } else if (intg.type === "skattekonto") {
+      const ta = taxAccounts[0];
+      if (ta) saldo = ta.current_balance;
+    }
+
+    return { ...intg, Icon, saldo, accountInfo };
+  });
 
   return (
     <main className="flex-1 p-4 md:p-8 overflow-auto">
-      {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Link2 className="h-7 w-7 text-primary" />
         <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">Integrationer</h1>
         <Badge variant="secondary" className="ml-2">{connectedCount}/{integrations.length} kopplade</Badge>
       </div>
 
-      {/* Integration cards */}
       <div className="space-y-4">
-        {integrations.map((intg) => (
-          <div
-            key={intg.id}
-            className={cn(
-              "rounded-xl border bg-card p-5 transition-all",
-              intg.connected ? "border-primary/20" : "border-border"
-            )}
-          >
+        {enriched.length === 0 && <p className="text-muted-foreground">Inga integrationer konfigurerade.</p>}
+        {enriched.map(intg => (
+          <div key={intg.id} className={cn("rounded-xl border bg-card p-5 transition-all", intg.status === "connected" ? "border-primary/20" : "border-border")}>
             <div className="flex items-start gap-4">
-              {/* Icon */}
-              <div className={cn(
-                "h-11 w-11 rounded-lg flex items-center justify-center shrink-0",
-                intg.connected ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-              )}>
-                {intg.icon}
+              <div className={cn("h-11 w-11 rounded-lg flex items-center justify-center shrink-0", intg.status === "connected" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                <intg.Icon className="h-6 w-6" />
               </div>
-
-              {/* Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-display text-base font-semibold text-card-foreground">{intg.name}</h3>
-                  {intg.connected ? (
-                    <Badge variant="outline" className="gap-1 text-xs bg-primary/10 text-primary border-primary/20">
-                      <CheckCircle2 className="h-3 w-3" /> Kopplad
-                    </Badge>
+                  <h3 className="font-display text-base font-semibold text-card-foreground">{intg.provider}</h3>
+                  {intg.status === "connected" ? (
+                    <Badge variant="outline" className="gap-1 text-xs bg-primary/10 text-primary border-primary/20"><CheckCircle2 className="h-3 w-3" /> Kopplad</Badge>
                   ) : (
-                    <Badge variant="outline" className="gap-1 text-xs bg-muted text-muted-foreground">
-                      <XCircle className="h-3 w-3" /> Ej kopplad
-                    </Badge>
+                    <Badge variant="outline" className="gap-1 text-xs bg-muted text-muted-foreground"><XCircle className="h-3 w-3" /> Ej kopplad</Badge>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground mt-0.5">{intg.description}</p>
-
-                {/* Connected details */}
-                {intg.connected && (
+                <p className="text-sm text-muted-foreground mt-0.5">{intg.type}</p>
+                {intg.status === "connected" && (
                   <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 text-sm">
                     {intg.saldo !== null && (
-                      <span className="text-card-foreground">
-                        Saldo: <span className={cn("font-semibold tabular-nums", intg.saldo >= 0 ? "text-primary" : "text-destructive")}>{fmt(intg.saldo)}</span>
-                      </span>
+                      <span className="text-card-foreground">Saldo: <span className={cn("font-semibold tabular-nums", intg.saldo >= 0 ? "text-primary" : "text-destructive")}>{fmt(intg.saldo)}</span></span>
                     )}
-                    {intg.accountNumber && (
-                      <span className="text-muted-foreground font-mono text-xs">{intg.accountNumber}</span>
-                    )}
-                    {intg.lastSync && (
+                    {intg.accountInfo && <span className="text-muted-foreground font-mono text-xs">{intg.accountInfo}</span>}
+                    {intg.last_synced_at && (
                       <span className="text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> Senast synkad: {intg.lastSync}
+                        <Clock className="h-3 w-3" /> Senast: {new Date(intg.last_synced_at).toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "short" })}
                       </span>
                     )}
                   </div>
                 )}
               </div>
-
-              {/* Actions */}
               <div className="flex flex-col gap-2 shrink-0">
-                {intg.connected ? (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5 text-xs"
-                      onClick={() => handleSync(intg.id)}
-                      disabled={syncing === intg.id}
-                    >
-                      <RefreshCw className={cn("h-3.5 w-3.5", syncing === intg.id && "animate-spin")} />
-                      {syncing === intg.id ? "Synkar..." : "Hämta"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-xs text-muted-foreground"
-                      onClick={() => handleDisconnect(intg.id)}
-                    >
-                      Koppla från
-                    </Button>
-                  </>
+                {intg.status === "connected" ? (
+                  <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => handleSync(intg.id)} disabled={syncing === intg.id}>
+                    <RefreshCw className={cn("h-3.5 w-3.5", syncing === intg.id && "animate-spin")} />
+                    {syncing === intg.id ? "Synkar..." : "Hämta"}
+                  </Button>
                 ) : (
-                  <Button size="sm" className="gap-1.5 text-xs" onClick={() => handleConnect(intg.id)}>
+                  <Button size="sm" className="gap-1.5 text-xs" disabled>
                     <ArrowDownToLine className="h-3.5 w-3.5" /> Koppla
                   </Button>
                 )}

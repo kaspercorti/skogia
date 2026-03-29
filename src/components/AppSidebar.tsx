@@ -1,26 +1,13 @@
 import {
-  LayoutDashboard,
-  BookOpen,
-  FileText,
-  TreePine,
-  TrendingUp,
-  Calculator,
-  BarChart3,
-  Link,
+  LayoutDashboard, BookOpen, FileText, TreePine, TrendingUp, Calculator, BarChart3, Link, LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarHeader,
-  useSidebar,
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/components/AuthProvider";
+import { Button } from "@/components/ui/button";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Översikt", url: "/" },
@@ -37,17 +24,14 @@ export default function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { signOut, user } = useAuth();
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
         <div className="flex items-center gap-2">
           <TreePine className="h-7 w-7 shrink-0 text-sidebar-primary" />
-          {!collapsed && (
-            <span className="font-display text-xl tracking-wide text-sidebar-accent-foreground">
-              Skogskoll
-            </span>
-          )}
+          {!collapsed && <span className="font-display text-xl tracking-wide text-sidebar-accent-foreground">Skogskoll</span>}
         </div>
       </SidebarHeader>
 
@@ -69,6 +53,16 @@ export default function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter className="border-t border-sidebar-border p-3">
+        {!collapsed && user && (
+          <p className="text-xs text-sidebar-foreground/60 truncate mb-2 px-1">{user.email}</p>
+        )}
+        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-sidebar-foreground/80 hover:text-sidebar-foreground" onClick={signOut}>
+          <LogOut className="h-4 w-4" />
+          {!collapsed && "Logga ut"}
+        </Button>
+      </SidebarFooter>
     </Sidebar>
   );
 }
