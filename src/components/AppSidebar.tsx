@@ -26,7 +26,8 @@ const navItems = [
 ];
 
 export default function AppSidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+  const isMobile = window.innerWidth < 768;
+  const [collapsed, setCollapsed] = useState(isMobile);
   const location = useLocation();
   const navigate = useNavigate();
 
