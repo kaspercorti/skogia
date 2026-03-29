@@ -38,6 +38,8 @@ const App = () => {
         </div>
       </SidebarProvider>
     </HashRouter>
+    <Toaster position="top-right" />
+    </>
   );
 };
 
