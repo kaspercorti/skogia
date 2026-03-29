@@ -12,6 +12,18 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
   },
+  build: {
+    target: "es2019",
+    cssTarget: "safari13",
+    modulePreload: {
+      polyfill: true,
+    },
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      target: "es2019",
+    },
+  },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
