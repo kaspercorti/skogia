@@ -196,6 +196,8 @@ export type Database = {
           invoice_number: string
           linked_activity_id: string | null
           property_id: string | null
+          sent_at: string | null
+          sent_to_email: string | null
           status: string
           updated_at: string
           user_id: string
@@ -214,6 +216,8 @@ export type Database = {
           invoice_number: string
           linked_activity_id?: string | null
           property_id?: string | null
+          sent_at?: string | null
+          sent_to_email?: string | null
           status?: string
           updated_at?: string
           user_id: string
@@ -232,6 +236,8 @@ export type Database = {
           invoice_number?: string
           linked_activity_id?: string | null
           property_id?: string | null
+          sent_at?: string | null
+          sent_to_email?: string | null
           status?: string
           updated_at?: string
           user_id?: string
@@ -539,6 +545,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_settings: {
+        Row: {
+          company_name: string | null
+          created_at: string
+          default_email_message: string | null
+          email_signature: string | null
+          id: string
+          reply_to_email: string | null
+          sender_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string
+          default_email_message?: string | null
+          email_signature?: string | null
+          id?: string
+          reply_to_email?: string | null
+          sender_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string
+          default_email_message?: string | null
+          email_signature?: string | null
+          id?: string
+          reply_to_email?: string | null
+          sender_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
