@@ -281,7 +281,8 @@ export default function Fakturering() {
               <Button onClick={handleAdd} className="mt-2 w-full gap-2"><Send className="h-4 w-4" />Skapa faktura</Button>
             </div>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {/* Tabs & Table */}
