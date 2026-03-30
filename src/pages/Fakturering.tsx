@@ -177,7 +177,9 @@ export default function Fakturering() {
           <FileText className="h-7 w-7 text-primary" />
           <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">Fakturering</h1>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <div className="flex items-center gap-2">
+          <InvoiceEmailSettings />
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2"><Plus className="h-4 w-4" /> Ny faktura</Button>
           </DialogTrigger>
