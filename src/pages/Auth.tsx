@@ -38,7 +38,7 @@ export default function Auth() {
           <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
             <TreePine className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="font-display text-3xl text-foreground">Skogskoll</h1>
+          <h1 className="font-display text-3xl text-foreground">Skogia</h1>
           <p className="text-sm text-muted-foreground mt-1">Ekonomisystem för skogsägare</p>
         </div>
 
