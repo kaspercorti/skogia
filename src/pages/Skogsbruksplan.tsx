@@ -91,7 +91,7 @@ export default function Skogsbruksplan() {
     const cost = Number(newAct.estimated_cost) || 0;
     const { error } = await supabase.from("forest_activities").insert({
       property_id: newAct.property_id,
-      stand_id: newAct.stand_id || null,
+      stand_id: newAct.stand_id && newAct.stand_id !== "none" ? newAct.stand_id : null,
       type: newAct.type,
       planned_date: newAct.planned_date || null,
       estimated_income: income,
