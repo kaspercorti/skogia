@@ -389,7 +389,12 @@ export default function Fakturering() {
                         <TableCell className="hidden md:table-cell text-sm text-muted-foreground max-w-[200px] truncate">{inv.description}</TableCell>
                         <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{inv.due_date}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={cn("gap-1 text-xs", sc.cls)}>{sc.icon}{sc.label}</Badge>
+                          <div className="flex flex-col gap-0.5">
+                            <Badge variant="outline" className={cn("gap-1 text-xs w-fit", sc.cls)}>{sc.icon}{sc.label}</Badge>
+                            {inv.status === "paid" && (inv as any).payment_date && (
+                              <span className="text-[10px] text-muted-foreground">Betald {(inv as any).payment_date}</span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right text-sm font-semibold tabular-nums whitespace-nowrap text-card-foreground">{fmt(inv.amount_inc_vat)}</TableCell>
                         <TableCell>
