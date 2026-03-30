@@ -379,6 +379,81 @@ export type Database = {
         }
         Relationships: []
       }
+      receipts: {
+        Row: {
+          amount_ex_vat: number | null
+          approved_at: string | null
+          approved_by: string | null
+          confidence_score: number | null
+          created_at: string
+          forest_activity_id: string | null
+          id: string
+          image_url: string | null
+          linked_transaction_id: string | null
+          notes: string | null
+          property_id: string | null
+          receipt_date: string | null
+          stand_id: string | null
+          status: string
+          suggested_account: string | null
+          suggested_category: string | null
+          supplier_name: string | null
+          total_amount: number | null
+          updated_at: string
+          uploaded_at: string
+          user_id: string
+          vat_amount: number | null
+        }
+        Insert: {
+          amount_ex_vat?: number | null
+          approved_at?: string | null
+          approved_by?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          forest_activity_id?: string | null
+          id?: string
+          image_url?: string | null
+          linked_transaction_id?: string | null
+          notes?: string | null
+          property_id?: string | null
+          receipt_date?: string | null
+          stand_id?: string | null
+          status?: string
+          suggested_account?: string | null
+          suggested_category?: string | null
+          supplier_name?: string | null
+          total_amount?: number | null
+          updated_at?: string
+          uploaded_at?: string
+          user_id: string
+          vat_amount?: number | null
+        }
+        Update: {
+          amount_ex_vat?: number | null
+          approved_at?: string | null
+          approved_by?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          forest_activity_id?: string | null
+          id?: string
+          image_url?: string | null
+          linked_transaction_id?: string | null
+          notes?: string | null
+          property_id?: string | null
+          receipt_date?: string | null
+          stand_id?: string | null
+          status?: string
+          suggested_account?: string | null
+          suggested_category?: string | null
+          supplier_name?: string | null
+          total_amount?: number | null
+          updated_at?: string
+          uploaded_at?: string
+          user_id?: string
+          vat_amount?: number | null
+        }
+        Relationships: []
+      }
       reports: {
         Row: {
           created_at: string
