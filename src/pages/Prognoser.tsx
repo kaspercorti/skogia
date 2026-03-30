@@ -43,7 +43,7 @@ export default function Prognoser() {
       });
       const actionIncome = yearActivities.reduce((s, a) => s + a.estimated_income, 0);
       const actionCost = yearActivities.reduce((s, a) => s + a.estimated_cost, 0);
-      const intakter = actionIncome || (i > 0 ? 25000 : 0);
+      const intakter = actionIncome;
       const kostnader = YEARLY_FIXED_COST + actionCost;
       result.push({ year: String(y), intakter, kostnader, resultat: intakter - kostnader });
     }
