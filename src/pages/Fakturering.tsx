@@ -298,13 +298,13 @@ export default function Fakturering() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nr</TableHead>
+                   <TableHead>Nr</TableHead>
                   <TableHead>Kund</TableHead>
                   <TableHead className="hidden md:table-cell">Beskrivning</TableHead>
                   <TableHead className="hidden md:table-cell">Förfaller</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Belopp</TableHead>
-                  <TableHead className="w-[80px]"></TableHead>
+                  <TableHead className="w-[140px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
