@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { FileText, Plus, Send, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
+import { FileText, Plus, Send, CheckCircle2, AlertTriangle, Clock, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
