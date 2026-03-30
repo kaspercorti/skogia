@@ -23,29 +23,62 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        
-        // Seed demo data for new signups
-        if (event === "SIGNED_IN" && session?.user) {
-          const userId = session.user.id;
-          // Check if user already has properties (i.e. already seeded)
-          const { data } = await supabase.from("properties").select("id").limit(1);
-          if (!data || data.length === 0) {
-            await supabase.rpc("seed_demo_data", { p_user_id: userId });
-          }
+    let isMounted = true;
+    const finishLoading = () => {
+      if (isMounted) setLoading(false);
+    };
+
+    const seedDemoDataIfNeeded = async (nextSession: Session | null) => {
+      if (!nextSession?.user) return;
+
+      try {
+        const userId = nextSession.user.id;
+        const { data, error } = await supabase.from("properties").select("id").limit(1);
+
+        if (!error && (!data || data.length === 0)) {
+          await supabase.rpc("seed_demo_data", { p_user_id: userId });
         }
-        setLoading(false);
+      } catch (error) {
+        console.error("Kunde inte skapa demodata:", error);
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, nextSession) => {
+        if (!isMounted) return;
+
+        setSession(nextSession);
+        finishLoading();
+
+        // Kör seed i bakgrunden så UI aldrig fastnar på "Laddar..."
+        if (event === "SIGNED_IN") {
+          void seedDemoDataIfNeeded(nextSession);
+        }
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    void supabase.auth
+      .getSession()
+      .then(({ data: { session: currentSession } }) => {
+        if (!isMounted) return;
+        setSession(currentSession);
+      })
+      .catch((error) => {
+        console.error("Kunde inte hämta session:", error);
+      })
+      .finally(() => {
+        finishLoading();
+      });
 
-    return () => subscription.unsubscribe();
+    const loadingTimeout = window.setTimeout(() => {
+      finishLoading();
+    }, 5000);
+
+    return () => {
+      isMounted = false;
+      window.clearTimeout(loadingTimeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
