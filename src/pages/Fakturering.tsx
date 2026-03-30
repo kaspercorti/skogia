@@ -22,7 +22,31 @@ export default function Fakturering() {
   const { data: customers = [] } = useCustomers();
   const { data: properties = [] } = useProperties();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [tab, setTab] = useState("all");
+
+  const [customerForm, setCustomerForm] = useState({
+    name: "", organization_number: "", email: "", phone: "", address: "",
+  });
+  const resetCustomerForm = () => setCustomerForm({ name: "", organization_number: "", email: "", phone: "", address: "" });
+
+  const handleAddCustomer = async () => {
+    if (!customerForm.name.trim() || !user) return;
+    const { data, error } = await supabase.from("customers").insert({
+      user_id: user.id,
+      name: customerForm.name.trim(),
+      organization_number: customerForm.organization_number || null,
+      email: customerForm.email || null,
+      phone: customerForm.phone || null,
+      address: customerForm.address || null,
+    }).select().single();
+    if (error) { toast.error("Kunde inte skapa kund: " + error.message); return; }
+    await queryClient.invalidateQueries({ queryKey: ["customers"] });
+    setForm(f => ({ ...f, customer_id: data.id }));
+    resetCustomerForm();
+    setCustomerDialogOpen(false);
+    toast.success(`Kund "${data.name}" skapad`);
+  };
 
   const [form, setForm] = useState({
     date: new Date().toISOString().slice(0, 10),
