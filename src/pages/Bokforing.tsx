@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { BookOpen, Plus, Filter, ArrowDownLeft, ArrowUpRight, X } from "lucide-react";
+import { ReceiptSection } from "@/components/receipt/ReceiptSection";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
