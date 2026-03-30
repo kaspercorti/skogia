@@ -53,6 +53,82 @@ export type Database = {
         }
         Relationships: []
       }
+      bank_transactions: {
+        Row: {
+          amount: number
+          bank_account_id: string | null
+          created_at: string
+          date: string
+          description: string | null
+          direction: string
+          id: string
+          match_reason: string | null
+          match_status: string
+          matched_invoice_id: string | null
+          matched_transaction_id: string | null
+          reference: string | null
+          transaction_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          bank_account_id?: string | null
+          created_at?: string
+          date?: string
+          description?: string | null
+          direction?: string
+          id?: string
+          match_reason?: string | null
+          match_status?: string
+          matched_invoice_id?: string | null
+          matched_transaction_id?: string | null
+          reference?: string | null
+          transaction_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          bank_account_id?: string | null
+          created_at?: string
+          date?: string
+          description?: string | null
+          direction?: string
+          id?: string
+          match_reason?: string | null
+          match_status?: string
+          matched_invoice_id?: string | null
+          matched_transaction_id?: string | null
+          reference?: string | null
+          transaction_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_transactions_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transactions_matched_invoice_id_fkey"
+            columns: ["matched_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transactions_matched_transaction_id_fkey"
+            columns: ["matched_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -476,6 +552,7 @@ export type Database = {
       transactions: {
         Row: {
           amount: number
+          bank_transaction_id: string | null
           category: string | null
           created_at: string
           date: string
@@ -493,6 +570,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          bank_transaction_id?: string | null
           category?: string | null
           created_at?: string
           date?: string
@@ -510,6 +588,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          bank_transaction_id?: string | null
           category?: string | null
           created_at?: string
           date?: string
@@ -526,6 +605,13 @@ export type Database = {
           vat_amount?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "transactions_bank_transaction_id_fkey"
+            columns: ["bank_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "bank_transactions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "transactions_invoice_id_fkey"
             columns: ["invoice_id"]
