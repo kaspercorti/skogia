@@ -91,7 +91,7 @@ export default function Skogsbruksplan() {
     const cost = Number(newAct.estimated_cost) || 0;
     const { error } = await supabase.from("forest_activities").insert({
       property_id: newAct.property_id,
-      stand_id: newAct.stand_id || null,
+      stand_id: newAct.stand_id && newAct.stand_id !== "none" ? newAct.stand_id : null,
       type: newAct.type,
       planned_date: newAct.planned_date || null,
       estimated_income: income,
@@ -362,7 +362,7 @@ export default function Skogsbruksplan() {
                   <Select value={newAct.stand_id} onValueChange={v => setNewAct({ ...newAct, stand_id: v })} disabled={!newAct.property_id}>
                     <SelectTrigger><SelectValue placeholder={newAct.property_id ? "Välj bestånd..." : "Välj fastighet först"} /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Inget specifikt</SelectItem>
+                      <SelectItem value="none">Inget specifikt</SelectItem>
                       {standsForAct.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
