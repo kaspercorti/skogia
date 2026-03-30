@@ -324,11 +324,17 @@ export default function Fakturering() {
                         </TableCell>
                         <TableCell className="text-right text-sm font-semibold tabular-nums whitespace-nowrap text-card-foreground">{fmt(inv.amount_inc_vat)}</TableCell>
                         <TableCell>
-                          {inv.status === "paid" ? (
-                            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => markAsUnpaid(inv.id)}>Ångra</Button>
-                          ) : (
-                            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => markAsPaid(inv)}>Betald</Button>
-                          )}
+                          <div className="flex items-center gap-1">
+                            <SendInvoiceButton
+                              invoice={inv as any}
+                              customer={customers.find(c => c.id === inv.customer_id)}
+                            />
+                            {inv.status === "paid" ? (
+                              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => markAsUnpaid(inv.id)}>Ångra</Button>
+                            ) : (
+                              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => markAsPaid(inv)}>Betald</Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
