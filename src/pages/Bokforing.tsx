@@ -212,6 +212,11 @@ export default function Bokforing() {
         </div>
       </div>
 
+      {/* Receipts */}
+      <div className="mb-6">
+        <ReceiptSection />
+      </div>
+
       {/* Table */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         <Table>
