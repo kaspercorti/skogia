@@ -195,6 +195,7 @@ export type Database = {
           invoice_date: string
           invoice_number: string
           linked_activity_id: string | null
+          payment_date: string | null
           property_id: string | null
           sent_at: string | null
           sent_to_email: string | null
@@ -215,6 +216,7 @@ export type Database = {
           invoice_date?: string
           invoice_number: string
           linked_activity_id?: string | null
+          payment_date?: string | null
           property_id?: string | null
           sent_at?: string | null
           sent_to_email?: string | null
@@ -235,6 +237,7 @@ export type Database = {
           invoice_date?: string
           invoice_number?: string
           linked_activity_id?: string | null
+          payment_date?: string | null
           property_id?: string | null
           sent_at?: string | null
           sent_to_email?: string | null
