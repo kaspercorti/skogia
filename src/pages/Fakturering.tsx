@@ -107,13 +107,32 @@ export default function Fakturering() {
     setDialogOpen(false);
   };
 
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["invoices"] });
+    queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    queryClient.invalidateQueries({ queryKey: ["bank_accounts"] });
+  };
+
   const markAsPaid = async (invoice: typeof invoices[0]) => {
     if (!user) return;
 
-    // Update invoice status
+    // Prevent duplicate: check if transaction already linked
+    const { data: existing } = await supabase
+      .from("transactions")
+      .select("id")
+      .eq("invoice_id", invoice.id)
+      .limit(1);
+    if (existing && existing.length > 0) {
+      toast.error("Transaktion finns redan för denna faktura");
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Update invoice status + payment_date
     const { error: updateError } = await supabase
       .from("invoices")
-      .update({ status: "paid" })
+      .update({ status: "paid", payment_date: today } as any)
       .eq("id", invoice.id);
 
     if (updateError) {
@@ -121,13 +140,13 @@ export default function Fakturering() {
       return;
     }
 
-    // Create corresponding income transaction
+    // Create income transaction
     const { error: txError } = await supabase.from("transactions").insert({
       user_id: user.id,
-      date: new Date().toISOString().slice(0, 10),
+      date: today,
       type: "income",
       category: invoice.category || "virkesförsäljning",
-      description: `Betald faktura ${invoice.invoice_number} – ${invoice.description || ""}`,
+      description: `Betald faktura #${invoice.invoice_number}${invoice.description ? " – " + invoice.description : ""}`,
       amount: invoice.amount_ex_vat,
       vat_amount: invoice.vat_amount,
       invoice_id: invoice.id,
@@ -138,17 +157,67 @@ export default function Fakturering() {
 
     if (txError) {
       toast.error("Faktura uppdaterad men transaktion kunde inte skapas: " + txError.message);
+      invalidateAll();
+      return;
     }
 
-    queryClient.invalidateQueries({ queryKey: ["invoices"] });
-    queryClient.invalidateQueries({ queryKey: ["transactions"] });
-    toast.success("Faktura markerad som betald – transaktion skapad");
+    // Update first connected bank account balance
+    const { data: banks } = await supabase
+      .from("bank_accounts")
+      .select("id, current_balance")
+      .eq("user_id", user.id)
+      .eq("is_connected", true)
+      .limit(1);
+
+    if (banks && banks.length > 0) {
+      const bank = banks[0];
+      await supabase
+        .from("bank_accounts")
+        .update({ current_balance: bank.current_balance + invoice.amount_inc_vat })
+        .eq("id", bank.id);
+    }
+
+    invalidateAll();
+    toast.success("Faktura markerad som betald – transaktion & saldo uppdaterat");
   };
 
-  const markAsUnpaid = async (invoiceId: string) => {
-    await supabase.from("invoices").update({ status: "unpaid" }).eq("id", invoiceId);
-    queryClient.invalidateQueries({ queryKey: ["invoices"] });
-    toast.info("Faktura markerad som obetald");
+  const markAsUnpaid = async (invoice: typeof invoices[0]) => {
+    if (!user) return;
+
+    // Delete linked transaction
+    const { data: linkedTx } = await supabase
+      .from("transactions")
+      .select("id")
+      .eq("invoice_id", invoice.id);
+
+    if (linkedTx && linkedTx.length > 0) {
+      await supabase.from("transactions").delete().eq("invoice_id", invoice.id);
+    }
+
+    // Reverse bank balance
+    const { data: banks } = await supabase
+      .from("bank_accounts")
+      .select("id, current_balance")
+      .eq("user_id", user.id)
+      .eq("is_connected", true)
+      .limit(1);
+
+    if (banks && banks.length > 0) {
+      const bank = banks[0];
+      await supabase
+        .from("bank_accounts")
+        .update({ current_balance: bank.current_balance - invoice.amount_inc_vat })
+        .eq("id", bank.id);
+    }
+
+    // Reset invoice
+    await supabase
+      .from("invoices")
+      .update({ status: "unpaid", payment_date: null } as any)
+      .eq("id", invoice.id);
+
+    invalidateAll();
+    toast.info("Betalning ångrad – transaktion borttagen, saldo justerat");
   };
 
   const statusConfig = {
