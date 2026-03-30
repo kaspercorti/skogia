@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { FileText, Plus, Send, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
+import { FileText, Plus, Send, CheckCircle2, AlertTriangle, Clock, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,31 @@ export default function Fakturering() {
   const { data: customers = [] } = useCustomers();
   const { data: properties = [] } = useProperties();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [tab, setTab] = useState("all");
+
+  const [customerForm, setCustomerForm] = useState({
+    name: "", organization_number: "", email: "", phone: "", address: "",
+  });
+  const resetCustomerForm = () => setCustomerForm({ name: "", organization_number: "", email: "", phone: "", address: "" });
+
+  const handleAddCustomer = async () => {
+    if (!customerForm.name.trim() || !user) return;
+    const { data, error } = await supabase.from("customers").insert({
+      user_id: user.id,
+      name: customerForm.name.trim(),
+      organization_number: customerForm.organization_number || null,
+      email: customerForm.email || null,
+      phone: customerForm.phone || null,
+      address: customerForm.address || null,
+    }).select().single();
+    if (error) { toast.error("Kunde inte skapa kund: " + error.message); return; }
+    await queryClient.invalidateQueries({ queryKey: ["customers"] });
+    setForm(f => ({ ...f, customer_id: data.id }));
+    resetCustomerForm();
+    setCustomerDialogOpen(false);
+    toast.success(`Kund "${data.name}" skapad`);
+  };
 
   const [form, setForm] = useState({
     date: new Date().toISOString().slice(0, 10),
@@ -170,13 +194,55 @@ export default function Fakturering() {
               </div>
               <div className="space-y-1.5">
                 <Label>Kund</Label>
-                <Select value={form.customer_id} onValueChange={v => setForm({ ...form, customer_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Välj kund..." /></SelectTrigger>
-                  <SelectContent>
-                    {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Select value={form.customer_id} onValueChange={v => setForm({ ...form, customer_id: v })}>
+                    <SelectTrigger className="flex-1"><SelectValue placeholder="Välj kund..." /></SelectTrigger>
+                    <SelectContent>
+                      {customers.length === 0 && (
+                        <p className="px-3 py-2 text-sm text-muted-foreground">Inga kunder finns</p>
+                      )}
+                      {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" variant="outline" size="icon" className="shrink-0" onClick={() => setCustomerDialogOpen(true)} title="Ny kund">
+                    <UserPlus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
+
+              {/* Ny kund dialog */}
+              <Dialog open={customerDialogOpen} onOpenChange={setCustomerDialogOpen}>
+                <DialogContent className="max-w-sm">
+                  <DialogHeader><DialogTitle>Ny kund</DialogTitle></DialogHeader>
+                  <div className="grid gap-3 py-2">
+                    <div className="space-y-1.5">
+                      <Label>Namn *</Label>
+                      <Input placeholder="Företagsnamn" value={customerForm.name} onChange={e => setCustomerForm({ ...customerForm, name: e.target.value })} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Organisationsnummer</Label>
+                      <Input placeholder="556xxx-xxxx" value={customerForm.organization_number} onChange={e => setCustomerForm({ ...customerForm, organization_number: e.target.value })} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>E-post</Label>
+                      <Input type="email" placeholder="faktura@foretag.se" value={customerForm.email} onChange={e => setCustomerForm({ ...customerForm, email: e.target.value })} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label>Telefon</Label>
+                        <Input placeholder="070-xxx xx xx" value={customerForm.phone} onChange={e => setCustomerForm({ ...customerForm, phone: e.target.value })} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Adress</Label>
+                        <Input placeholder="Gata, ort" value={customerForm.address} onChange={e => setCustomerForm({ ...customerForm, address: e.target.value })} />
+                      </div>
+                    </div>
+                    <Button onClick={handleAddCustomer} disabled={!customerForm.name.trim()} className="mt-1 w-full gap-2">
+                      <Plus className="h-4 w-4" />Spara kund
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
               <div className="space-y-1.5">
                 <Label>Fastighet</Label>
                 <Select value={form.property_id} onValueChange={v => setForm({ ...form, property_id: v })}>
