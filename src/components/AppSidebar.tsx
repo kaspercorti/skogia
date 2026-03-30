@@ -31,7 +31,7 @@ export default function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
         <div className="flex items-center gap-2">
           <TreePine className="h-7 w-7 shrink-0 text-sidebar-primary" />
-          {!collapsed && <span className="font-display text-xl tracking-wide text-sidebar-accent-foreground">Skogskoll</span>}
+          {!collapsed && <span className="font-display text-xl tracking-wide text-sidebar-accent-foreground">Skogia</span>}
         </div>
       </SidebarHeader>
 
