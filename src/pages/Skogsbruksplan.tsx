@@ -362,7 +362,7 @@ export default function Skogsbruksplan() {
                   <Select value={newAct.stand_id} onValueChange={v => setNewAct({ ...newAct, stand_id: v })} disabled={!newAct.property_id}>
                     <SelectTrigger><SelectValue placeholder={newAct.property_id ? "Välj bestånd..." : "Välj fastighet först"} /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Inget specifikt</SelectItem>
+                      <SelectItem value="none">Inget specifikt</SelectItem>
                       {standsForAct.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
