@@ -14,6 +14,8 @@ import { useInvoices, useCustomers, useProperties, fmt } from "@/hooks/useSkogsk
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
+import SendInvoiceButton from "@/components/invoice/SendInvoiceButton";
+import InvoiceEmailSettings from "@/components/invoice/InvoiceEmailSettings";
 
 export default function Fakturering() {
   const { user } = useAuth();
@@ -175,7 +177,9 @@ export default function Fakturering() {
           <FileText className="h-7 w-7 text-primary" />
           <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">Fakturering</h1>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <div className="flex items-center gap-2">
+          <InvoiceEmailSettings />
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2"><Plus className="h-4 w-4" /> Ny faktura</Button>
           </DialogTrigger>
@@ -277,7 +281,8 @@ export default function Fakturering() {
               <Button onClick={handleAdd} className="mt-2 w-full gap-2"><Send className="h-4 w-4" />Skapa faktura</Button>
             </div>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {/* Tabs & Table */}
@@ -293,13 +298,13 @@ export default function Fakturering() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nr</TableHead>
+                   <TableHead>Nr</TableHead>
                   <TableHead>Kund</TableHead>
                   <TableHead className="hidden md:table-cell">Beskrivning</TableHead>
                   <TableHead className="hidden md:table-cell">Förfaller</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Belopp</TableHead>
-                  <TableHead className="w-[80px]"></TableHead>
+                  <TableHead className="w-[140px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -319,11 +324,17 @@ export default function Fakturering() {
                         </TableCell>
                         <TableCell className="text-right text-sm font-semibold tabular-nums whitespace-nowrap text-card-foreground">{fmt(inv.amount_inc_vat)}</TableCell>
                         <TableCell>
-                          {inv.status === "paid" ? (
-                            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => markAsUnpaid(inv.id)}>Ångra</Button>
-                          ) : (
-                            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => markAsPaid(inv)}>Betald</Button>
-                          )}
+                          <div className="flex items-center gap-1">
+                            <SendInvoiceButton
+                              invoice={inv as any}
+                              customer={customers.find(c => c.id === inv.customer_id)}
+                            />
+                            {inv.status === "paid" ? (
+                              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => markAsUnpaid(inv.id)}>Ångra</Button>
+                            ) : (
+                              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => markAsPaid(inv)}>Betald</Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );

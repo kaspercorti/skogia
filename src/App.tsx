@@ -36,7 +36,7 @@ function AppRoutes() {
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="flex h-12 items-center border-b border-border md:hidden">
             <SidebarTrigger className="ml-2" />
-            <span className="ml-2 font-display text-lg text-foreground">Skogskoll</span>
+            <span className="ml-2 font-display text-lg text-foreground">Skogia</span>
           </header>
           <Routes>
             <Route path="/" element={<Index />} />
