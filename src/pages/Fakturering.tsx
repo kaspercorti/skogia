@@ -399,9 +399,11 @@ export default function Fakturering() {
                               customer={customers.find(c => c.id === inv.customer_id)}
                             />
                             {inv.status === "paid" ? (
-                              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => markAsUnpaid(inv.id)}>Ångra</Button>
+                              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={() => markAsUnpaid(inv)}>Ångra</Button>
                             ) : (
-                              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => markAsPaid(inv)}>Betald</Button>
+                              <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => markAsPaid(inv)}>
+                                <CheckCircle2 className="h-3 w-3" /> Betald
+                              </Button>
                             )}
                           </div>
                         </TableCell>
