@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useIntegrations, useBankAccounts, useTaxAccounts, fmt } from "@/hooks/useSkogskollData";
 import { useState } from "react";
+import BankMatchingSection from "@/components/bank/BankMatchingSection";
 
 const iconMap: Record<string, any> = {
   bank: Building2,
@@ -102,6 +103,8 @@ export default function Integrationer() {
           </div>
         ))}
       </div>
+
+      <BankMatchingSection />
     </main>
   );
 }
