@@ -103,6 +103,8 @@ export default function Integrationer() {
           </div>
         ))}
       </div>
+
+      <BankMatchingSection />
     </main>
   );
 }
