@@ -14,6 +14,8 @@ import { useInvoices, useCustomers, useProperties, fmt } from "@/hooks/useSkogsk
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
+import SendInvoiceButton from "@/components/invoice/SendInvoiceButton";
+import InvoiceEmailSettings from "@/components/invoice/InvoiceEmailSettings";
 
 export default function Fakturering() {
   const { user } = useAuth();
