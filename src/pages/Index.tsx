@@ -20,6 +20,7 @@ export default function Index() {
   const { data: activities = [] } = useForestActivities();
   const { data: bankAccounts = [] } = useBankAccounts();
   const { data: taxAccounts = [] } = useTaxAccounts();
+  const { data: lossCarryForwards = [] } = useLossCarryForwards();
 
   const year = new Date().getFullYear();
   const saldo = bankAccounts.reduce((s, a) => s + a.current_balance, 0);
@@ -28,7 +29,11 @@ export default function Index() {
   const openInvoiceAmount = calcOpenInvoices(invoices);
   const overdueInvoices = calcOverdueInvoices(invoices);
   const upcomingIncome = calcUpcomingIncome(activities);
-  const estimatedTax = calcEstimatedTax(resultat);
+
+  // Apply loss carry-forwards to get correct tax estimate
+  const lossResult = applyLossCarryForwards(resultat, lossCarryForwards);
+  const estimatedTax = calcEstimatedTax(lossResult.taxableResultat);
+  const totalRemainingLoss = lossResult.remainingLosses;
 
   // Find biggest planned activity for decision banner
   const biggestActivity = activities
