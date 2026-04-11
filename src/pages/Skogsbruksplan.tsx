@@ -1444,6 +1444,181 @@ export default function Skogsbruksplan() {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Edit Activity Dialog */}
+      <Dialog open={editActDialogOpen} onOpenChange={setEditActDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Redigera skogsaktivitet</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Fastighet *</Label>
+              <Select value={editAct.property_id} onValueChange={v => setEditAct({ ...editAct, property_id: v, stand_id: "" })}>
+                <SelectTrigger><SelectValue placeholder="Välj fastighet..." /></SelectTrigger>
+                <SelectContent>
+                  {properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Bestånd</Label>
+              <Select value={editAct.stand_id} onValueChange={v => setEditAct({ ...editAct, stand_id: v })} disabled={!editAct.property_id}>
+                <SelectTrigger><SelectValue placeholder={editAct.property_id ? "Välj bestånd..." : "Välj fastighet först"} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Inget specifikt</SelectItem>
+                  {standsForEditAct.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Typ *</Label>
+                <Select value={editAct.type} onValueChange={v => setEditAct({ ...editAct, type: v })}>
+                  <SelectTrigger><SelectValue placeholder="Välj..." /></SelectTrigger>
+                  <SelectContent>
+                    {[
+                      "slutavverkning", "gallring", "röjning", "plantering", "markberedning",
+                      "hyggesrensning", "naturvårdande skötsel", "skyddsdikning", "gödsling",
+                      "vägunderhåll", "dikesrensning", "kantzonsskötsel", "naturvårdsåtgärd", "övrigt"
+                    ].map(t => (
+                      <SelectItem key={t} value={t} className="capitalize">{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Planerat datum</Label>
+                <Input type="date" value={editAct.planned_date} onChange={e => setEditAct({ ...editAct, planned_date: e.target.value })} />
+              </div>
+            </div>
+            {editAct.type === "övrigt" && (
+              <div className="space-y-1.5">
+                <Label>Ange åtgärdstyp (fritext) *</Label>
+                <Input placeholder="Beskriv åtgärden..." value={editAct.custom_type} onChange={e => setEditAct({ ...editAct, custom_type: e.target.value })} />
+              </div>
+            )}
+
+            {/* Genomförd aktivitet */}
+            <div className="rounded-lg border border-border p-3 space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={editAct.is_completed} onChange={e => setEditAct({ ...editAct, is_completed: e.target.checked })} className="rounded border-input h-4 w-4 accent-primary" />
+                <span className="text-sm font-medium text-foreground">Genomförd aktivitet</span>
+              </label>
+              {editAct.is_completed && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Genomförandedatum</Label>
+                  <Input type="date" className="h-8 text-sm" value={editAct.completed_date} onChange={e => setEditAct({ ...editAct, completed_date: e.target.value })} />
+                </div>
+              )}
+            </div>
+
+            {/* Dynamic type-specific fields */}
+            {editAct.type && (
+              <ActivityFormFields
+                data={editAct}
+                onChange={setEditAct}
+                stands={standsForEditAct}
+              />
+            )}
+
+            {/* Ekonomi – only for harvest types */}
+            {HARVEST_TYPES.includes(editAct.type) && (
+              <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3">
+                <p className="text-xs font-semibold text-primary uppercase tracking-wide">Ekonomi</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Beräknad intäkt (kr)</Label>
+                    <Input type="number" placeholder="0" value={editAct.estimated_income} onChange={e => setEditAct({ ...editAct, estimated_income: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Kostnad per m³sk (kr)</Label>
+                    <Input type="number" placeholder="0" value={editAct.cost_per_m3sk ?? ""} onChange={e => {
+                      const costPerM3 = e.target.value;
+                      const vol = Number(editAct.harvested_volume_m3sk) || 0;
+                      const totalCost = vol > 0 && Number(costPerM3) > 0 ? Math.round(vol * Number(costPerM3)) : Number(costPerM3) > 0 ? Number(costPerM3) : 0;
+                      setEditAct({ ...editAct, cost_per_m3sk: costPerM3, estimated_cost: String(totalCost) });
+                    }} />
+                  </div>
+                </div>
+                {(Number(editAct.estimated_income) > 0 || Number(editAct.estimated_cost) > 0) && (() => {
+                  const income = Number(editAct.estimated_income) || 0;
+                  const cost = Number(editAct.estimated_cost) || 0;
+                  const vol = Number(editAct.harvested_volume_m3sk) || 0;
+                  const netto = income - cost;
+                  const nettoPerM3 = vol > 0 ? netto / vol : null;
+                  return (
+                    <div className="rounded-md bg-muted/50 p-2 text-xs space-y-0.5">
+                      <div className="flex justify-between"><span className="text-muted-foreground">Intäkt:</span><span className="text-foreground">{income.toLocaleString("sv-SE")} kr</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Kostnad:</span><span className="text-destructive">−{cost.toLocaleString("sv-SE")} kr</span></div>
+                      <div className="flex justify-between border-t border-border pt-0.5 font-semibold"><span className="text-muted-foreground">Netto:</span><span className={netto >= 0 ? "text-primary" : "text-destructive"}>{netto.toLocaleString("sv-SE")} kr</span></div>
+                      {nettoPerM3 !== null && (
+                        <div className="flex justify-between font-semibold"><span className="text-muted-foreground">Netto per m³sk:</span><span className={nettoPerM3 >= 0 ? "text-primary" : "text-destructive"}>{Math.round(nettoPerM3).toLocaleString("sv-SE")} kr/m³sk</span></div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Bidrag / Stöd */}
+            <div className="rounded-lg border border-border p-3 space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={editAct.has_subsidy} onChange={e => setEditAct({ ...editAct, has_subsidy: e.target.checked })} className="rounded border-input h-4 w-4 accent-primary" />
+                <span className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                  <BadgeCheck className="h-4 w-4 text-primary" /> Har bidrag / stöd
+                </span>
+              </label>
+              {editAct.has_subsidy && (
+                <div className="grid gap-3 pt-1">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Bidragstyp</Label>
+                      <Select value={editAct.subsidy_type} onValueChange={v => setEditAct({ ...editAct, subsidy_type: v })}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Välj..." /></SelectTrigger>
+                        <SelectContent>
+                          {["Skogsstyrelsen", "LONA", "NOKÅS", "Klimatstöd", "EU-stöd", "Allmänningsbidrag", "Annat"].map(t => (
+                            <SelectItem key={t} value={t}>{t}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Belopp (kr)</Label>
+                      <Input type="number" placeholder="0" className="h-8 text-sm" value={editAct.subsidy_amount} onChange={e => setEditAct({ ...editAct, subsidy_amount: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Status</Label>
+                      <Select value={editAct.subsidy_status} onValueChange={v => setEditAct({ ...editAct, subsidy_status: v })}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="planned">Planerat</SelectItem>
+                          <SelectItem value="applied">Ansökt</SelectItem>
+                          <SelectItem value="approved">Beviljat</SelectItem>
+                          <SelectItem value="paid">Utbetalt</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Datum</Label>
+                      <Input type="date" className="h-8 text-sm" value={editAct.subsidy_date} onChange={e => setEditAct({ ...editAct, subsidy_date: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Kommentar</Label>
+                    <Input placeholder="T.ex. ansökningsnummer..." className="h-8 text-sm" value={editAct.subsidy_notes} onChange={e => setEditAct({ ...editAct, subsidy_notes: e.target.value })} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Anteckningar</Label>
+              <Textarea placeholder="Fritext..." value={editAct.notes} onChange={e => setEditAct({ ...editAct, notes: e.target.value })} />
+            </div>
+            <Button onClick={handleUpdateActivity} className="mt-2 w-full" disabled={!editAct.type || !editAct.property_id}>Spara ändringar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
