@@ -48,6 +48,8 @@ export default function Skogsbruksplan() {
     production_goal: "", general_comment: "", action_comment: "", special_values: "",
   };
   const [newStand, setNewStand] = useState(emptyStand);
+  // Edit stand form
+  const [editStand, setEditStand] = useState(emptyStand);
   // New activity form
   const [newAct, setNewAct] = useState({ property_id: "", stand_id: "", type: "", planned_date: "", estimated_income: "", estimated_cost: "", notes: "" });
 
