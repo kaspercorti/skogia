@@ -359,15 +359,23 @@ export default function Skogsbruksplan() {
                   <TableHead>Typ</TableHead>
                   <TableHead>Datum</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Kostnad</TableHead>
+                  <TableHead className="text-right">Bidrag</TableHead>
                   <TableHead className="text-right">Netto</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {standActivities.map(a => (
                   <TableRow key={a.id}>
-                    <TableCell className="text-sm text-card-foreground">{a.type}</TableCell>
+                    <TableCell className="text-sm text-card-foreground capitalize">{a.type}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{a.planned_date || "—"}</TableCell>
                     <TableCell><Badge variant="secondary" className="text-xs">{a.status}</Badge></TableCell>
+                    <TableCell className="text-right text-sm tabular-nums text-muted-foreground">{fmtKr(a.estimated_cost)}</TableCell>
+                    <TableCell className="text-right text-sm tabular-nums">
+                      {a.has_subsidy && a.subsidy_amount > 0 ? (
+                        <span className="text-primary flex items-center justify-end gap-1"><BadgeCheck className="h-3 w-3" />{fmtKr(a.subsidy_amount)}</span>
+                      ) : "—"}
+                    </TableCell>
                     <TableCell className={cn("text-right text-sm font-semibold tabular-nums", a.estimated_net >= 0 ? "text-primary" : "text-card-foreground")}>
                       {a.estimated_net >= 0 ? "+" : "−"}{fmtKr(Math.abs(a.estimated_net))}
                     </TableCell>
