@@ -53,6 +53,9 @@ export default function Skogsbruksplan() {
   const [actDialogOpen, setActDialogOpen] = useState(false);
   const [editStandDialogOpen, setEditStandDialogOpen] = useState(false);
   const [editStandId, setEditStandId] = useState<string | null>(null);
+  const [editActDialogOpen, setEditActDialogOpen] = useState(false);
+  const [editActId, setEditActId] = useState<string | null>(null);
+  const [editAct, setEditAct] = useState<ActivityFormData>(emptyActivityForm);
 
   // New property form
   const [newProp, setNewProp] = useState({ name: "", municipality: "", total_area_ha: "", productive_forest_ha: "" });
@@ -383,6 +386,160 @@ export default function Skogsbruksplan() {
     toast.success(nowCompleted ? "Aktivitet markerad som genomförd" : "Aktivitet markerad som planerad");
   };
 
+  const openEditActivity = (a: typeof activities[0]) => {
+    const s = (v: any) => v != null ? String(v) : "";
+    setEditActId(a.id);
+    setEditAct({
+      property_id: a.property_id,
+      stand_id: a.stand_id || "",
+      type: a.custom_type ? "övrigt" : a.type,
+      custom_type: a.custom_type || "",
+      planned_date: a.planned_date || "",
+      estimated_income: s(a.estimated_income),
+      estimated_cost: s(a.estimated_cost),
+      notes: a.notes || "",
+      has_subsidy: a.has_subsidy,
+      subsidy_type: a.subsidy_type || "",
+      subsidy_amount: s(a.subsidy_amount),
+      subsidy_status: a.subsidy_status || "planned",
+      subsidy_date: a.subsidy_date || "",
+      subsidy_notes: a.subsidy_notes || "",
+      harvested_volume_m3sk: s(a.harvested_volume_m3sk),
+      sold_volume_m3sk: s(a.sold_volume_m3sk),
+      price_per_m3sk: s(a.price_per_m3sk),
+      total_revenue: s(a.total_revenue),
+      cost_per_m3sk: "",
+      area_ha: s((a as any).area_ha),
+      length_meters: s((a as any).length_meters),
+      plant_count: s((a as any).plant_count),
+      plants_per_ha: s((a as any).plants_per_ha),
+      fertilizer_amount: s((a as any).fertilizer_amount),
+      fertilizer_unit: (a as any).fertilizer_unit || "kg/ha",
+      cost_per_ha: s((a as any).cost_per_ha),
+      cost_per_meter: s((a as any).cost_per_meter),
+      total_cost: s((a as any).total_cost),
+      work_description: (a as any).work_description || "",
+      quantity: s((a as any).quantity),
+      quantity_unit: (a as any).quantity_unit || "",
+      tree_species: (a as any).tree_species || "",
+      work_type: (a as any).work_type || "",
+      is_completed: a.is_completed,
+      completed_date: a.completed_date || "",
+      affects_forest_plan: a.affects_forest_plan,
+    });
+    setEditActDialogOpen(true);
+  };
+
+  const handleUpdateActivity = async () => {
+    if (!editActId || !editAct.type || !editAct.property_id) return;
+    const isHarvest = HARVEST_TYPES.includes(editAct.type);
+    const income = Number(editAct.estimated_income) || 0;
+    const cost = Number(editAct.estimated_cost) || Number(editAct.total_cost) || 0;
+    const subsidyAmt = editAct.has_subsidy ? (Number(editAct.subsidy_amount) || 0) : 0;
+    const harvestedVol = isHarvest ? (Number(editAct.harvested_volume_m3sk) || 0) : 0;
+    const soldVol = isHarvest ? (Number(editAct.sold_volume_m3sk) || harvestedVol) : 0;
+    const pricePerM3 = isHarvest && editAct.price_per_m3sk ? Number(editAct.price_per_m3sk) : null;
+    const totalRev = isHarvest ? (Number(editAct.total_revenue) || (pricePerM3 && soldVol ? pricePerM3 * soldVol : 0)) : 0;
+    const finalIncome = totalRev > 0 ? totalRev : income;
+
+    // Get original activity to check if completion status changed
+    const original = activities.find(a => a.id === editActId);
+    if (!original) return;
+
+    const wasCompleted = original.is_completed;
+    const nowCompleted = editAct.is_completed;
+    const oldHarvest = original.harvested_volume_m3sk || 0;
+
+    const selectedStand = editAct.stand_id && editAct.stand_id !== "none" ? stands.find(s => s.id === editAct.stand_id) : null;
+
+    // Volume validation for harvest types
+    if (isHarvest && nowCompleted && editAct.affects_forest_plan && selectedStand && harvestedVol > 0) {
+      const currentVol = selectedStand.volume_m3sk ?? 0;
+      // Add back old harvest if it was previously deducted
+      const availableVol = wasCompleted && original.affects_forest_plan ? currentVol + oldHarvest : currentVol;
+      if (harvestedVol > availableVol) {
+        toast.error(`Uttaget (${harvestedVol} m³sk) överstiger tillgängligt virkesförråd (${availableVol} m³sk)`);
+        return;
+      }
+    }
+
+    const { error } = await supabase.from("forest_activities").update({
+      property_id: editAct.property_id,
+      stand_id: editAct.stand_id && editAct.stand_id !== "none" ? editAct.stand_id : null,
+      type: editAct.type === "övrigt" && editAct.custom_type ? editAct.custom_type : editAct.type,
+      custom_type: editAct.type === "övrigt" ? editAct.custom_type || null : null,
+      planned_date: editAct.planned_date || null,
+      estimated_income: finalIncome,
+      estimated_cost: cost,
+      estimated_net: finalIncome - cost + subsidyAmt,
+      status: nowCompleted ? "completed" : "planned",
+      notes: editAct.notes || null,
+      has_subsidy: editAct.has_subsidy,
+      subsidy_type: editAct.has_subsidy ? editAct.subsidy_type || null : null,
+      subsidy_amount: subsidyAmt,
+      subsidy_status: editAct.has_subsidy ? editAct.subsidy_status || "planned" : null,
+      subsidy_date: editAct.has_subsidy && editAct.subsidy_date ? editAct.subsidy_date : null,
+      subsidy_notes: editAct.has_subsidy ? editAct.subsidy_notes || null : null,
+      harvested_volume_m3sk: harvestedVol,
+      sold_volume_m3sk: soldVol,
+      price_per_m3sk: pricePerM3,
+      total_revenue: totalRev,
+      is_completed: nowCompleted,
+      completed_date: nowCompleted ? (editAct.completed_date || new Date().toISOString().slice(0, 10)) : null,
+      affects_forest_plan: isHarvest ? editAct.affects_forest_plan : false,
+      area_ha: Number(editAct.area_ha) || null,
+      length_meters: Number(editAct.length_meters) || null,
+      plant_count: Number(editAct.plant_count) || null,
+      plants_per_ha: Number(editAct.plants_per_ha) || null,
+      fertilizer_amount: Number(editAct.fertilizer_amount) || null,
+      fertilizer_unit: editAct.fertilizer_unit || null,
+      cost_per_ha: Number(editAct.cost_per_ha) || null,
+      cost_per_meter: Number(editAct.cost_per_meter) || null,
+      total_cost: Number(editAct.total_cost) || null,
+      work_description: editAct.work_description || null,
+      quantity: Number(editAct.quantity) || null,
+      quantity_unit: editAct.quantity_unit || null,
+      tree_species: editAct.tree_species || null,
+      work_type: editAct.work_type || null,
+    } as any).eq("id", editActId);
+    if (error) { toast.error("Kunde inte uppdatera: " + error.message); return; }
+
+    // Handle stand volume changes for harvest types
+    if (isHarvest && selectedStand) {
+      const currentVol = selectedStand.volume_m3sk ?? 0;
+      let newVol = currentVol;
+
+      // Restore old volume if it was previously deducted
+      if (wasCompleted && original.affects_forest_plan && oldHarvest > 0) {
+        newVol += oldHarvest;
+      }
+      // Deduct new volume if now completed
+      if (nowCompleted && editAct.affects_forest_plan && harvestedVol > 0) {
+        newVol -= harvestedVol;
+      }
+
+      if (newVol !== currentVol) {
+        const { error: standErr } = await supabase.from("stands").update({
+          volume_m3sk: Math.max(0, newVol),
+          volume_per_ha: selectedStand.area_ha > 0 ? Math.round((Math.max(0, newVol) / selectedStand.area_ha) * 10) / 10 : null,
+        }).eq("id", selectedStand.id);
+        if (standErr) {
+          toast.error("Aktivitet uppdaterad men kunde inte uppdatera beståndsvolym: " + standErr.message);
+        } else {
+          toast.success(`Virkesförråd uppdaterat: ${fmt(currentVol)} → ${fmt(Math.max(0, newVol))} m³sk`);
+        }
+        // Update plan_updated flag
+        await supabase.from("forest_activities").update({ plan_updated: nowCompleted && editAct.affects_forest_plan && harvestedVol > 0 } as any).eq("id", editActId);
+      }
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
+    queryClient.invalidateQueries({ queryKey: ["stands"] });
+    toast.success("Aktivitet uppdaterad");
+    setEditActDialogOpen(false);
+    setEditActId(null);
+  };
+
   const selectedStandPanel = selected ? (() => {
     const propName = properties.find(p => p.id === selected.property_id)?.name || "";
     const standActivities = activities.filter(a => a.stand_id === selected.id);
@@ -518,14 +675,14 @@ export default function Skogsbruksplan() {
                 </TableHeader>
                 <TableBody>
                   {standActivities.map(a => (
-                    <TableRow key={a.id} className={a.is_completed ? "bg-muted/30" : ""}>
+                    <TableRow key={a.id} className={cn("cursor-pointer hover:bg-muted/50", a.is_completed ? "bg-muted/30" : "")} onClick={() => openEditActivity(a)}>
                       <TableCell className="text-sm capitalize text-card-foreground">{a.type}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{a.is_completed ? a.completed_date || a.planned_date || "—" : a.planned_date || "—"}</TableCell>
                       <TableCell>
                         <Badge
                           variant={a.is_completed ? "default" : "secondary"}
                           className="text-xs cursor-pointer hover:opacity-80"
-                          onClick={() => handleToggleActivityStatus(a)}
+                          onClick={(e) => { e.stopPropagation(); handleToggleActivityStatus(a); }}
                           title={a.is_completed ? "Klicka för att ändra till planerad" : "Klicka för att markera som genomförd"}
                         >
                           {a.is_completed ? "Genomförd" : a.status === "planned" ? "Planerad" : a.status}
@@ -605,6 +762,15 @@ export default function Skogsbruksplan() {
       return numA - numB;
     });
   }, [stands, newAct.property_id]);
+
+  const standsForEditAct = useMemo(() => {
+    const filtered = editAct.property_id ? stands.filter(s => s.property_id === editAct.property_id) : [];
+    return [...filtered].sort((a, b) => {
+      const numA = parseInt(a.name.replace(/\D/g, '')) || 0;
+      const numB = parseInt(b.name.replace(/\D/g, '')) || 0;
+      return numA - numB;
+    });
+  }, [stands, editAct.property_id]);
 
   return (
     <main className="flex-1 p-4 md:p-8 overflow-auto">
@@ -1275,6 +1441,181 @@ export default function Skogsbruksplan() {
             <div className="space-y-1.5"><Label>Anteckningar</Label><Textarea value={editStand.notes || ""} onChange={e => setEditStand({ ...editStand, notes: e.target.value })} /></div>
 
             <Button onClick={handleUpdateStand} className="mt-2 w-full">Spara ändringar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Edit Activity Dialog */}
+      <Dialog open={editActDialogOpen} onOpenChange={setEditActDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Redigera skogsaktivitet</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Fastighet *</Label>
+              <Select value={editAct.property_id} onValueChange={v => setEditAct({ ...editAct, property_id: v, stand_id: "" })}>
+                <SelectTrigger><SelectValue placeholder="Välj fastighet..." /></SelectTrigger>
+                <SelectContent>
+                  {properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Bestånd</Label>
+              <Select value={editAct.stand_id} onValueChange={v => setEditAct({ ...editAct, stand_id: v })} disabled={!editAct.property_id}>
+                <SelectTrigger><SelectValue placeholder={editAct.property_id ? "Välj bestånd..." : "Välj fastighet först"} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Inget specifikt</SelectItem>
+                  {standsForEditAct.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Typ *</Label>
+                <Select value={editAct.type} onValueChange={v => setEditAct({ ...editAct, type: v })}>
+                  <SelectTrigger><SelectValue placeholder="Välj..." /></SelectTrigger>
+                  <SelectContent>
+                    {[
+                      "slutavverkning", "gallring", "röjning", "plantering", "markberedning",
+                      "hyggesrensning", "naturvårdande skötsel", "skyddsdikning", "gödsling",
+                      "vägunderhåll", "dikesrensning", "kantzonsskötsel", "naturvårdsåtgärd", "övrigt"
+                    ].map(t => (
+                      <SelectItem key={t} value={t} className="capitalize">{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Planerat datum</Label>
+                <Input type="date" value={editAct.planned_date} onChange={e => setEditAct({ ...editAct, planned_date: e.target.value })} />
+              </div>
+            </div>
+            {editAct.type === "övrigt" && (
+              <div className="space-y-1.5">
+                <Label>Ange åtgärdstyp (fritext) *</Label>
+                <Input placeholder="Beskriv åtgärden..." value={editAct.custom_type} onChange={e => setEditAct({ ...editAct, custom_type: e.target.value })} />
+              </div>
+            )}
+
+            {/* Genomförd aktivitet */}
+            <div className="rounded-lg border border-border p-3 space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={editAct.is_completed} onChange={e => setEditAct({ ...editAct, is_completed: e.target.checked })} className="rounded border-input h-4 w-4 accent-primary" />
+                <span className="text-sm font-medium text-foreground">Genomförd aktivitet</span>
+              </label>
+              {editAct.is_completed && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Genomförandedatum</Label>
+                  <Input type="date" className="h-8 text-sm" value={editAct.completed_date} onChange={e => setEditAct({ ...editAct, completed_date: e.target.value })} />
+                </div>
+              )}
+            </div>
+
+            {/* Dynamic type-specific fields */}
+            {editAct.type && (
+              <ActivityFormFields
+                data={editAct}
+                onChange={setEditAct}
+                stands={standsForEditAct}
+              />
+            )}
+
+            {/* Ekonomi – only for harvest types */}
+            {HARVEST_TYPES.includes(editAct.type) && (
+              <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3">
+                <p className="text-xs font-semibold text-primary uppercase tracking-wide">Ekonomi</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Beräknad intäkt (kr)</Label>
+                    <Input type="number" placeholder="0" value={editAct.estimated_income} onChange={e => setEditAct({ ...editAct, estimated_income: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Kostnad per m³sk (kr)</Label>
+                    <Input type="number" placeholder="0" value={editAct.cost_per_m3sk ?? ""} onChange={e => {
+                      const costPerM3 = e.target.value;
+                      const vol = Number(editAct.harvested_volume_m3sk) || 0;
+                      const totalCost = vol > 0 && Number(costPerM3) > 0 ? Math.round(vol * Number(costPerM3)) : Number(costPerM3) > 0 ? Number(costPerM3) : 0;
+                      setEditAct({ ...editAct, cost_per_m3sk: costPerM3, estimated_cost: String(totalCost) });
+                    }} />
+                  </div>
+                </div>
+                {(Number(editAct.estimated_income) > 0 || Number(editAct.estimated_cost) > 0) && (() => {
+                  const income = Number(editAct.estimated_income) || 0;
+                  const cost = Number(editAct.estimated_cost) || 0;
+                  const vol = Number(editAct.harvested_volume_m3sk) || 0;
+                  const netto = income - cost;
+                  const nettoPerM3 = vol > 0 ? netto / vol : null;
+                  return (
+                    <div className="rounded-md bg-muted/50 p-2 text-xs space-y-0.5">
+                      <div className="flex justify-between"><span className="text-muted-foreground">Intäkt:</span><span className="text-foreground">{income.toLocaleString("sv-SE")} kr</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Kostnad:</span><span className="text-destructive">−{cost.toLocaleString("sv-SE")} kr</span></div>
+                      <div className="flex justify-between border-t border-border pt-0.5 font-semibold"><span className="text-muted-foreground">Netto:</span><span className={netto >= 0 ? "text-primary" : "text-destructive"}>{netto.toLocaleString("sv-SE")} kr</span></div>
+                      {nettoPerM3 !== null && (
+                        <div className="flex justify-between font-semibold"><span className="text-muted-foreground">Netto per m³sk:</span><span className={nettoPerM3 >= 0 ? "text-primary" : "text-destructive"}>{Math.round(nettoPerM3).toLocaleString("sv-SE")} kr/m³sk</span></div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Bidrag / Stöd */}
+            <div className="rounded-lg border border-border p-3 space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={editAct.has_subsidy} onChange={e => setEditAct({ ...editAct, has_subsidy: e.target.checked })} className="rounded border-input h-4 w-4 accent-primary" />
+                <span className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                  <BadgeCheck className="h-4 w-4 text-primary" /> Har bidrag / stöd
+                </span>
+              </label>
+              {editAct.has_subsidy && (
+                <div className="grid gap-3 pt-1">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Bidragstyp</Label>
+                      <Select value={editAct.subsidy_type} onValueChange={v => setEditAct({ ...editAct, subsidy_type: v })}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Välj..." /></SelectTrigger>
+                        <SelectContent>
+                          {["Skogsstyrelsen", "LONA", "NOKÅS", "Klimatstöd", "EU-stöd", "Allmänningsbidrag", "Annat"].map(t => (
+                            <SelectItem key={t} value={t}>{t}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Belopp (kr)</Label>
+                      <Input type="number" placeholder="0" className="h-8 text-sm" value={editAct.subsidy_amount} onChange={e => setEditAct({ ...editAct, subsidy_amount: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Status</Label>
+                      <Select value={editAct.subsidy_status} onValueChange={v => setEditAct({ ...editAct, subsidy_status: v })}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="planned">Planerat</SelectItem>
+                          <SelectItem value="applied">Ansökt</SelectItem>
+                          <SelectItem value="approved">Beviljat</SelectItem>
+                          <SelectItem value="paid">Utbetalt</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Datum</Label>
+                      <Input type="date" className="h-8 text-sm" value={editAct.subsidy_date} onChange={e => setEditAct({ ...editAct, subsidy_date: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Kommentar</Label>
+                    <Input placeholder="T.ex. ansökningsnummer..." className="h-8 text-sm" value={editAct.subsidy_notes} onChange={e => setEditAct({ ...editAct, subsidy_notes: e.target.value })} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Anteckningar</Label>
+              <Textarea placeholder="Fritext..." value={editAct.notes} onChange={e => setEditAct({ ...editAct, notes: e.target.value })} />
+            </div>
+            <Button onClick={handleUpdateActivity} className="mt-2 w-full" disabled={!editAct.type || !editAct.property_id}>Spara ändringar</Button>
           </div>
         </DialogContent>
       </Dialog>
