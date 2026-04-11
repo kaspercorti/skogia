@@ -391,16 +391,50 @@ export default function ForestPlanImport({ properties, triggerRef }: ForestPlanI
 
               <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
                 <label className="text-sm font-medium text-foreground block mb-2">Välj fastighet att importera till *</label>
-                <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
-                  <SelectTrigger className="max-w-xs">
-                    <SelectValue placeholder="Välj fastighet..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {properties.map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                  <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+                    <SelectTrigger className="max-w-xs">
+                      <SelectValue placeholder="Välj fastighet..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {properties.map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" variant="outline" size="sm" className="gap-1.5 shrink-0" onClick={() => setShowNewPropForm(v => !v)}>
+                    <Plus className="h-3.5 w-3.5" /> Ny fastighet
+                  </Button>
+                </div>
+                {showNewPropForm && (
+                  <div className="mt-3 rounded-lg border border-border bg-card p-3 space-y-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> Skapa ny fastighet</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Namn *</Label>
+                        <Input placeholder="T.ex. Sörgården 1:24" className="h-8 text-sm" value={inlineProp.name} onChange={e => setInlineProp({ ...inlineProp, name: e.target.value })} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Kommun</Label>
+                        <Input placeholder="T.ex. Ljusdal" className="h-8 text-sm" value={inlineProp.municipality} onChange={e => setInlineProp({ ...inlineProp, municipality: e.target.value })} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Total areal (ha)</Label>
+                        <Input type="number" placeholder="0" className="h-8 text-sm" value={inlineProp.total_area_ha} onChange={e => setInlineProp({ ...inlineProp, total_area_ha: e.target.value })} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Produktiv skog (ha)</Label>
+                        <Input type="number" placeholder="0" className="h-8 text-sm" value={inlineProp.productive_forest_ha} onChange={e => setInlineProp({ ...inlineProp, productive_forest_ha: e.target.value })} />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={handleCreateInlineProperty} disabled={!inlineProp.name}>Skapa</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setShowNewPropForm(false)}>Avbryt</Button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
