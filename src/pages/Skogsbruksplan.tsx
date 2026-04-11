@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { TreePine, ChevronRight, ArrowLeft, Calendar, Trees, Plus, MapPin } from "lucide-react";
+import { TreePine, ChevronRight, ArrowLeft, Calendar, Trees, Plus, MapPin, Trash2 } from "lucide-react";
 import ForestPlanImport from "@/components/forest/ForestPlanImport";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { useProperties, useStands, useForestActivities, useTransactions, fmt as fmtKr } from "@/hooks/useSkogskollData";
@@ -63,6 +64,21 @@ export default function Skogsbruksplan() {
     toast.success("Fastighet skapad");
     setNewProp({ name: "", municipality: "", total_area_ha: "", productive_forest_ha: "" });
     setPropDialogOpen(false);
+  };
+
+  const handleDeleteProperty = async (propertyId: string, propertyName: string) => {
+    if (!user) return;
+    // Delete stands, activities, then property
+    const { error: actErr } = await supabase.from("forest_activities").delete().eq("property_id", propertyId);
+    if (actErr) { toast.error("Kunde inte ta bort aktiviteter: " + actErr.message); return; }
+    const { error: standErr } = await supabase.from("stands").delete().eq("property_id", propertyId);
+    if (standErr) { toast.error("Kunde inte ta bort bestånd: " + standErr.message); return; }
+    const { error } = await supabase.from("properties").delete().eq("id", propertyId);
+    if (error) { toast.error("Kunde inte ta bort: " + error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ["properties"] });
+    queryClient.invalidateQueries({ queryKey: ["stands"] });
+    queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
+    toast.success(`Fastighet "${propertyName}" borttagen`);
   };
 
   const handleAddStand = async () => {
@@ -484,9 +500,32 @@ export default function Skogsbruksplan() {
             const propArea = propStands.reduce((s, st) => s + st.area_ha, 0);
             return (
               <div key={p.id} className="rounded-xl border border-border bg-card p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <MapPin className="h-4 w-4 text-primary" />
-                  <p className="text-sm font-semibold text-card-foreground">{p.name}</p>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    <p className="text-sm font-semibold text-card-foreground">{p.name}</p>
+                  </div>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Ta bort fastighet</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Är du säker på att du vill ta bort <strong>{p.name}</strong>? Alla bestånd och aktiviteter kopplade till fastigheten tas också bort. Detta går inte att ångra.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDeleteProperty(p.id, p.name)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Ta bort
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
                 <p className="text-xs text-muted-foreground">{p.municipality || "—"}</p>
                 <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
