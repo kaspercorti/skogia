@@ -56,6 +56,8 @@ export default function Skogsbruksplan() {
     property_id: "", stand_id: "", type: "", custom_type: "", planned_date: "",
     estimated_income: "", estimated_cost: "", notes: "",
     has_subsidy: false, subsidy_type: "", subsidy_amount: "", subsidy_status: "planned", subsidy_date: "", subsidy_notes: "",
+    harvested_volume_m3sk: "", sold_volume_m3sk: "", price_per_m3sk: "", total_revenue: "",
+    is_completed: false, completed_date: "", affects_forest_plan: true,
   };
   const [newAct, setNewAct] = useState(emptyAct);
 
@@ -207,16 +209,36 @@ export default function Skogsbruksplan() {
     const income = Number(newAct.estimated_income) || 0;
     const cost = Number(newAct.estimated_cost) || 0;
     const subsidyAmt = newAct.has_subsidy ? (Number(newAct.subsidy_amount) || 0) : 0;
+    const harvestedVol = Number(newAct.harvested_volume_m3sk) || 0;
+    const soldVol = Number(newAct.sold_volume_m3sk) || harvestedVol;
+    const pricePerM3 = newAct.price_per_m3sk ? Number(newAct.price_per_m3sk) : null;
+    const totalRev = Number(newAct.total_revenue) || (pricePerM3 && soldVol ? pricePerM3 * soldVol : 0);
+    const finalIncome = totalRev > 0 ? totalRev : income;
+
+    // Validation: check volume doesn't exceed stand
+    const selectedStand = newAct.stand_id && newAct.stand_id !== "none" ? stands.find(s => s.id === newAct.stand_id) : null;
+    if (newAct.is_completed && newAct.affects_forest_plan && selectedStand && harvestedVol > 0) {
+      const currentVol = selectedStand.volume_m3sk ?? 0;
+      if (harvestedVol > currentVol) {
+        toast.error(`Uttaget (${harvestedVol} m³sk) överstiger beståndets virkesförråd (${currentVol} m³sk)`);
+        return;
+      }
+    }
+    if (newAct.is_completed && newAct.affects_forest_plan && harvestedVol > 0 && (!newAct.stand_id || newAct.stand_id === "none")) {
+      toast.error("Välj ett bestånd för att kunna uppdatera skogsbruksplanen");
+      return;
+    }
+
     const { error } = await supabase.from("forest_activities").insert({
       property_id: newAct.property_id,
       stand_id: newAct.stand_id && newAct.stand_id !== "none" ? newAct.stand_id : null,
       type: newAct.type === "övrigt" && newAct.custom_type ? newAct.custom_type : newAct.type,
       custom_type: newAct.type === "övrigt" ? newAct.custom_type || null : null,
       planned_date: newAct.planned_date || null,
-      estimated_income: income,
+      estimated_income: finalIncome,
       estimated_cost: cost,
-      estimated_net: income - cost + subsidyAmt,
-      status: "planned",
+      estimated_net: finalIncome - cost + subsidyAmt,
+      status: newAct.is_completed ? "completed" : "planned",
       notes: newAct.notes || null,
       has_subsidy: newAct.has_subsidy,
       subsidy_type: newAct.has_subsidy ? newAct.subsidy_type || null : null,
@@ -224,8 +246,35 @@ export default function Skogsbruksplan() {
       subsidy_status: newAct.has_subsidy ? newAct.subsidy_status || "planned" : null,
       subsidy_date: newAct.has_subsidy && newAct.subsidy_date ? newAct.subsidy_date : null,
       subsidy_notes: newAct.has_subsidy ? newAct.subsidy_notes || null : null,
-    });
+      harvested_volume_m3sk: harvestedVol,
+      sold_volume_m3sk: soldVol,
+      price_per_m3sk: pricePerM3,
+      total_revenue: totalRev,
+      is_completed: newAct.is_completed,
+      completed_date: newAct.is_completed ? (newAct.completed_date || new Date().toISOString().slice(0, 10)) : null,
+      affects_forest_plan: newAct.affects_forest_plan,
+      plan_updated: false,
+    } as any);
     if (error) { toast.error("Kunde inte spara: " + error.message); return; }
+
+    // Auto-update stand volume
+    if (newAct.is_completed && newAct.affects_forest_plan && selectedStand && harvestedVol > 0) {
+      const currentVol = selectedStand.volume_m3sk ?? 0;
+      const newVol = currentVol - harvestedVol;
+      const { error: standErr } = await supabase.from("stands").update({
+        volume_m3sk: newVol,
+        volume_per_ha: selectedStand.area_ha > 0 ? Math.round((newVol / selectedStand.area_ha) * 10) / 10 : null,
+      }).eq("id", selectedStand.id);
+      if (standErr) {
+        toast.error("Aktivitet sparad men kunde inte uppdatera beståndet: " + standErr.message);
+      } else {
+        // Mark activity as plan_updated
+        await supabase.from("forest_activities").update({ plan_updated: true } as any).eq("stand_id", selectedStand.id).eq("is_completed", true).eq("plan_updated", false);
+        toast.success(`Virkesförråd uppdaterat: ${fmt(currentVol)} → ${fmt(newVol)} m³sk`);
+      }
+      queryClient.invalidateQueries({ queryKey: ["stands"] });
+    }
+
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
     toast.success("Aktivitet skapad");
     setNewAct(emptyAct);
