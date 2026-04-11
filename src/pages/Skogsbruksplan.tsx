@@ -726,63 +726,66 @@ export default function Skogsbruksplan() {
         <SummaryCard label="Årlig tillväxt" value={`${fmt(totalStats.tillvaxt)} m³sk`} />
       </div>
 
-      {/* Carbon Credits Section */}
-      <div className="mt-6">
-        <CarbonCreditsSection stands={stands} />
-      </div>
+      {/* Avdelningsbeskrivning - Collapsible */}
+      <CollapsibleSection title="Avdelningsbeskrivning" icon={<Trees className="h-5 w-5 text-primary" />} defaultOpen>
+        <div className="rounded-xl border border-border bg-card overflow-hidden overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Bestånd</TableHead>
+                <TableHead>Areal</TableHead>
+                <TableHead>Ålder</TableHead>
+                <TableHead>Hkl</TableHead>
+                <TableHead>Bonitet</TableHead>
+                <TableHead>Trädslag</TableHead>
+                <TableHead className="text-right">Volym</TableHead>
+                <TableHead className="text-right">Diam (cm)</TableHead>
+                <TableHead className="text-right">Höjd (m)</TableHead>
+                <TableHead>Målklass</TableHead>
+                <TableHead className="text-right">G-yta</TableHead>
+                <TableHead className="text-right">Tillväxt</TableHead>
+                <TableHead>Åtgärd</TableHead>
+                <TableHead className="text-right">Värde</TableHead>
+                <TableHead className="w-8"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {stands.length === 0 ? (
+                <TableRow><TableCell colSpan={15} className="text-center text-muted-foreground py-8">Inga bestånd ännu – lägg till en fastighet och bestånd ovan</TableCell></TableRow>
+              ) : (
+                stands.map(b => (
+                  <TableRow key={b.id} className="cursor-pointer" onClick={() => setSelectedId(b.id)}>
+                    <TableCell>
+                      <p className="text-sm font-medium text-card-foreground whitespace-nowrap">{b.name}</p>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{b.area_ha} ha</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{b.age ?? "—"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{b.huggningsklass || "—"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{b.site_index || "—"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{b.tree_species || "—"}</TableCell>
+                    <TableCell className="text-right text-sm tabular-nums text-card-foreground">{fmt(b.volume_m3sk ?? 0)}</TableCell>
+                    <TableCell className="text-right text-sm tabular-nums text-muted-foreground">{b.mean_diameter_cm ?? "—"}</TableCell>
+                    <TableCell className="text-right text-sm tabular-nums text-muted-foreground">{b.mean_height_m ?? "—"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{b.goal_class || "—"}</TableCell>
+                    <TableCell className="text-right text-sm tabular-nums text-muted-foreground">{b.basal_area_m2 ?? "—"}</TableCell>
+                    <TableCell className="text-right text-sm tabular-nums text-muted-foreground">{b.annual_growth_m3sk ?? "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-xs font-normal whitespace-nowrap">{b.planned_action || "—"} {b.planned_year || ""}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right text-sm font-semibold tabular-nums text-primary">{fmtKr(b.estimated_value ?? 0)}</TableCell>
+                    <TableCell><ChevronRight className="h-4 w-4 text-muted-foreground" /></TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </CollapsibleSection>
 
-      <div className="mt-6 rounded-xl border border-border bg-card overflow-hidden overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Bestånd</TableHead>
-              <TableHead>Areal</TableHead>
-              <TableHead>Ålder</TableHead>
-              <TableHead>Hkl</TableHead>
-              <TableHead>Bonitet</TableHead>
-              <TableHead>Trädslag</TableHead>
-              <TableHead className="text-right">Volym</TableHead>
-              <TableHead className="text-right">Diam (cm)</TableHead>
-              <TableHead className="text-right">Höjd (m)</TableHead>
-              <TableHead>Målklass</TableHead>
-              <TableHead className="text-right">G-yta</TableHead>
-              <TableHead className="text-right">Tillväxt</TableHead>
-              <TableHead>Åtgärd</TableHead>
-              <TableHead className="text-right">Värde</TableHead>
-              <TableHead className="w-8"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {stands.length === 0 ? (
-              <TableRow><TableCell colSpan={15} className="text-center text-muted-foreground py-8">Inga bestånd ännu – lägg till en fastighet och bestånd ovan</TableCell></TableRow>
-            ) : (
-              stands.map(b => (
-                <TableRow key={b.id} className="cursor-pointer" onClick={() => setSelectedId(b.id)}>
-                  <TableCell>
-                    <p className="text-sm font-medium text-card-foreground whitespace-nowrap">{b.name}</p>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{b.area_ha} ha</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{b.age ?? "—"}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{b.huggningsklass || "—"}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{b.site_index || "—"}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{b.tree_species || "—"}</TableCell>
-                  <TableCell className="text-right text-sm tabular-nums text-card-foreground">{fmt(b.volume_m3sk ?? 0)}</TableCell>
-                  <TableCell className="text-right text-sm tabular-nums text-muted-foreground">{b.mean_diameter_cm ?? "—"}</TableCell>
-                  <TableCell className="text-right text-sm tabular-nums text-muted-foreground">{b.mean_height_m ?? "—"}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{b.goal_class || "—"}</TableCell>
-                  <TableCell className="text-right text-sm tabular-nums text-muted-foreground">{b.basal_area_m2 ?? "—"}</TableCell>
-                  <TableCell className="text-right text-sm tabular-nums text-muted-foreground">{b.annual_growth_m3sk ?? "—"}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="text-xs font-normal whitespace-nowrap">{b.planned_action || "—"} {b.planned_year || ""}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right text-sm font-semibold tabular-nums text-primary">{fmtKr(b.estimated_value ?? 0)}</TableCell>
-                  <TableCell><ChevronRight className="h-4 w-4 text-muted-foreground" /></TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      {/* Kolkrediter - Collapsible */}
+      <CollapsibleSection title="Kolkrediter" icon={<Leaf className="h-5 w-5 text-primary" />} className="mt-4">
+        <CarbonCreditsSection stands={stands} />
+      </CollapsibleSection>
     </main>
   );
 }
