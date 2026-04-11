@@ -281,202 +281,193 @@ export default function Skogsbruksplan() {
     setActDialogOpen(false);
   };
 
-  // Stand detail view
-  if (selected) {
+  const selectedStandPanel = selected ? (() => {
     const propName = properties.find(p => p.id === selected.property_id)?.name || "";
     const standActivities = activities.filter(a => a.stand_id === selected.id);
     const standTransactions = transactions.filter(t => t.stand_id === selected.id);
 
     return (
-      <main className="flex-1 p-4 md:p-8 overflow-auto">
-        <Button variant="ghost" className="gap-2 mb-4 -ml-2 text-muted-foreground" onClick={() => setSelectedId(null)}>
-          <ArrowLeft className="h-4 w-4" /> Tillbaka
-        </Button>
-
-        <div className="flex items-center gap-3 mb-6">
-          <Trees className="h-7 w-7 text-primary" />
-          <div>
-            <h1 className="font-display text-2xl font-bold text-foreground">{selected.name}</h1>
-            <p className="text-sm text-muted-foreground">{propName}</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <DetailCard label="Areal" value={`${selected.area_ha} ha`} />
-          <DetailCard label="Ålder" value={`${selected.age ?? "—"} år`} />
-          <DetailCard label="Volym" value={`${fmt(selected.volume_m3sk ?? 0)} m³sk`} />
-          <DetailCard label="Trädslag" value={selected.tree_species || "—"} small />
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <DetailCard label="Huggningsklass" value={selected.huggningsklass || "—"} small />
-          <DetailCard label="Bonitet (SI)" value={selected.site_index || "—"} small />
-          <DetailCard label="Medeldiameter" value={selected.mean_diameter_cm ? `${selected.mean_diameter_cm} cm` : "—"} />
-          <DetailCard label="Medelhöjd" value={selected.mean_height_m ? `${selected.mean_height_m} m` : "—"} />
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <DetailCard label="Målklass" value={selected.goal_class || "—"} small />
-          <DetailCard label="Grundyta" value={selected.basal_area_m2 ? `${selected.basal_area_m2} m²/ha` : "—"} />
-          <DetailCard label="Årlig tillväxt" value={selected.annual_growth_m3sk ? `${selected.annual_growth_m3sk} m³sk` : "—"} />
-          <DetailCard label="Uppskattat värde" value={fmtKr(selected.estimated_value ?? 0)} />
-        </div>
-
-        {/* Mark & terräng */}
-        {(selected.vegetation_type || selected.moisture_class || selected.terrain_type || selected.driving_conditions || selected.gyl_values || selected.slope_info) && (
-          <div className="rounded-xl border border-border bg-card p-4 mb-6">
-            <p className="text-xs font-semibold text-muted-foreground mb-2">Mark & terräng</p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {selected.vegetation_type && <DetailCard label="Vegetationstyp" value={selected.vegetation_type} small />}
-              {selected.moisture_class && <DetailCard label="Fuktighet" value={selected.moisture_class} small />}
-              {selected.terrain_type && <DetailCard label="Terräng" value={selected.terrain_type} small />}
-              {selected.driving_conditions && <DetailCard label="Drivning" value={selected.driving_conditions} small />}
-              {selected.gyl_values && <DetailCard label="GYL" value={selected.gyl_values} small />}
-              {selected.slope_info && <DetailCard label="Lutning" value={selected.slope_info} small />}
+      <div className="mb-6 overflow-hidden rounded-2xl border border-primary/20 bg-card">
+        <div className="flex flex-col gap-3 border-b border-border p-4 md:flex-row md:items-start md:justify-between md:p-6">
+          <div className="flex items-center gap-3">
+            <Trees className="h-7 w-7 text-primary" />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary">Valt bestånd</p>
+              <h2 className="font-display text-2xl font-bold text-foreground">{selected.name}</h2>
+              <p className="text-sm text-muted-foreground">{propName}</p>
             </div>
           </div>
-        )}
-
-        {/* Trädslagsfördelning */}
-        {selected.species_breakdown && Array.isArray(selected.species_breakdown) && (selected.species_breakdown as any[]).length > 0 && (
-          <div className="rounded-xl border border-border bg-card p-4 mb-6">
-            <p className="text-xs font-semibold text-muted-foreground mb-2">Trädslagsfördelning</p>
-            <div className="flex flex-wrap gap-3">
-              {(selected.species_breakdown as any[]).map((sp: any, i: number) => (
-                <div key={i} className="rounded-lg border border-border bg-muted/30 px-3 py-1.5">
-                  <span className="text-sm font-medium text-foreground">{sp.species}</span>
-                  {sp.percent != null && <span className="text-xs text-muted-foreground ml-1.5">{sp.percent}%</span>}
-                  {sp.volume_m3sk != null && <span className="text-xs text-muted-foreground ml-1.5">({sp.volume_m3sk} m³sk)</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Descriptions */}
-        {(selected.description || selected.production_goal || selected.general_comment || selected.special_values) && (
-          <div className="rounded-xl border border-border bg-card p-4 mb-6 space-y-3">
-            {selected.description && (
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Beskrivning</p>
-                <p className="text-sm text-card-foreground">{selected.description}</p>
-              </div>
-            )}
-            {selected.production_goal && (
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Produktionsmål</p>
-                <p className="text-sm text-card-foreground">{selected.production_goal}</p>
-              </div>
-            )}
-            {selected.general_comment && (
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Kommentar</p>
-                <p className="text-sm text-card-foreground">{selected.general_comment}</p>
-              </div>
-            )}
-            {selected.special_values && (
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Speciella värden</p>
-                <p className="text-sm text-card-foreground">{selected.special_values}</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Raw text */}
-        {selected.raw_description_text && (
-          <div className="rounded-xl border border-border bg-card p-4 mb-6">
-            <p className="text-xs text-muted-foreground mb-1">Råtext från skogsbruksplan</p>
-            <p className="text-sm text-card-foreground whitespace-pre-wrap font-mono bg-muted/30 p-3 rounded-lg">{selected.raw_description_text}</p>
-          </div>
-        )}
-
-        <div className="rounded-xl border border-border bg-card p-4 mb-6">
-          <div className="flex items-center gap-2 mb-1">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium text-card-foreground">Planerad åtgärd</span>
-          </div>
-          <p className="text-lg font-semibold text-foreground">{selected.planned_action || "Ingen"} <span className="text-muted-foreground font-normal">– {selected.planned_year || "—"}</span></p>
+          <Button variant="ghost" className="gap-2 self-start text-muted-foreground" onClick={() => setSelectedId(null)}>
+            <ArrowLeft className="h-4 w-4" /> Stäng detaljvy
+          </Button>
         </div>
 
-        {standActivities.length > 0 && (
-          <div className="rounded-xl border border-border bg-card overflow-hidden mb-6">
-            <div className="p-4 border-b border-border"><h3 className="font-display text-lg text-card-foreground">Aktiviteter & historik</h3></div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Typ</TableHead>
-                  <TableHead>Datum</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Uttag (m³sk)</TableHead>
-                  <TableHead className="text-right">Kostnad</TableHead>
-                  <TableHead className="text-right">Intäkt</TableHead>
-                  <TableHead className="text-right">Bidrag</TableHead>
-                  <TableHead className="text-right">Netto</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {standActivities.map(a => (
-                  <TableRow key={a.id} className={a.is_completed ? "bg-muted/30" : ""}>
-                    <TableCell className="text-sm text-card-foreground capitalize">{a.type}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{a.is_completed ? a.completed_date || a.planned_date || "—" : a.planned_date || "—"}</TableCell>
-                    <TableCell>
-                      <Badge variant={a.is_completed ? "default" : "secondary"} className="text-xs">
-                        {a.is_completed ? "Genomförd" : a.status === "planned" ? "Planerad" : a.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums text-card-foreground">
-                      {a.harvested_volume_m3sk > 0 ? `${fmt(a.harvested_volume_m3sk)}` : "—"}
-                    </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums text-muted-foreground">{fmtKr(a.estimated_cost)}</TableCell>
-                    <TableCell className="text-right text-sm tabular-nums text-card-foreground">
-                      {a.total_revenue > 0 ? fmtKr(a.total_revenue) : a.estimated_income > 0 ? fmtKr(a.estimated_income) : "—"}
-                    </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">
-                      {a.has_subsidy && a.subsidy_amount > 0 ? (
-                        <span className="text-primary flex items-center justify-end gap-1"><BadgeCheck className="h-3 w-3" />{fmtKr(a.subsidy_amount)}</span>
-                      ) : "—"}
-                    </TableCell>
-                    <TableCell className={cn("text-right text-sm font-semibold tabular-nums", a.estimated_net >= 0 ? "text-primary" : "text-card-foreground")}>
-                      {a.estimated_net >= 0 ? "+" : "−"}{fmtKr(Math.abs(a.estimated_net))}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+        <div className="p-4 md:p-6">
+          <div className="grid grid-cols-2 gap-3 mb-6 md:grid-cols-4">
+            <DetailCard label="Areal" value={`${selected.area_ha} ha`} />
+            <DetailCard label="Ålder" value={`${selected.age ?? "—"} år`} />
+            <DetailCard label="Volym" value={`${fmt(selected.volume_m3sk ?? 0)} m³sk`} />
+            <DetailCard label="Trädslag" value={selected.tree_species || "—"} small />
           </div>
-        )}
 
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <div className="p-4 border-b border-border"><h3 className="font-display text-lg text-card-foreground">Ekonomi – {selected.name}</h3></div>
-          {standTransactions.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground">Inga transaktioner kopplade ännu.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Datum</TableHead>
-                  <TableHead>Beskrivning</TableHead>
-                  <TableHead className="text-right">Belopp</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {standTransactions.map(t => (
-                  <TableRow key={t.id}>
-                    <TableCell className="text-sm text-muted-foreground">{t.date}</TableCell>
-                    <TableCell className="text-sm text-card-foreground">{t.description}</TableCell>
-                    <TableCell className={cn("text-right text-sm font-semibold tabular-nums", t.type === "income" ? "text-primary" : "text-card-foreground")}>
-                      {t.type === "income" ? "+" : "−"}{fmtKr(t.amount)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="grid grid-cols-2 gap-3 mb-6 md:grid-cols-4">
+            <DetailCard label="Huggningsklass" value={selected.huggningsklass || "—"} small />
+            <DetailCard label="Bonitet (SI)" value={selected.site_index || "—"} small />
+            <DetailCard label="Medeldiameter" value={selected.mean_diameter_cm ? `${selected.mean_diameter_cm} cm` : "—"} />
+            <DetailCard label="Medelhöjd" value={selected.mean_height_m ? `${selected.mean_height_m} m` : "—"} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mb-6 md:grid-cols-4">
+            <DetailCard label="Målklass" value={selected.goal_class || "—"} small />
+            <DetailCard label="Grundyta" value={selected.basal_area_m2 ? `${selected.basal_area_m2} m²/ha` : "—"} />
+            <DetailCard label="Årlig tillväxt" value={selected.annual_growth_m3sk ? `${selected.annual_growth_m3sk} m³sk` : "—"} />
+            <DetailCard label="Uppskattat värde" value={fmtKr(selected.estimated_value ?? 0)} />
+          </div>
+
+          {(selected.vegetation_type || selected.moisture_class || selected.terrain_type || selected.driving_conditions || selected.gyl_values || selected.slope_info) && (
+            <div className="rounded-xl border border-border bg-card p-4 mb-6">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Mark & terräng</p>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                {selected.vegetation_type && <DetailCard label="Vegetationstyp" value={selected.vegetation_type} small />}
+                {selected.moisture_class && <DetailCard label="Fuktighet" value={selected.moisture_class} small />}
+                {selected.terrain_type && <DetailCard label="Terräng" value={selected.terrain_type} small />}
+                {selected.driving_conditions && <DetailCard label="Drivning" value={selected.driving_conditions} small />}
+                {selected.gyl_values && <DetailCard label="GYL" value={selected.gyl_values} small />}
+                {selected.slope_info && <DetailCard label="Lutning" value={selected.slope_info} small />}
+              </div>
+            </div>
           )}
+
+          {selected.species_breakdown && Array.isArray(selected.species_breakdown) && (selected.species_breakdown as any[]).length > 0 && (
+            <div className="rounded-xl border border-border bg-card p-4 mb-6">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Trädslagsfördelning</p>
+              <div className="flex flex-wrap gap-3">
+                {(selected.species_breakdown as any[]).map((sp: any, i: number) => (
+                  <div key={i} className="rounded-lg border border-border bg-muted/30 px-3 py-1.5">
+                    <span className="text-sm font-medium text-foreground">{sp.species}</span>
+                    {sp.percent != null && <span className="ml-1.5 text-xs text-muted-foreground">{sp.percent}%</span>}
+                    {sp.volume_m3sk != null && <span className="ml-1.5 text-xs text-muted-foreground">({sp.volume_m3sk} m³sk)</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(selected.description || selected.production_goal || selected.general_comment || selected.special_values) && (
+            <div className="rounded-xl border border-border bg-card p-4 mb-6 space-y-3">
+              {selected.description && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Beskrivning</p>
+                  <p className="text-sm text-card-foreground">{selected.description}</p>
+                </div>
+              )}
+              {selected.production_goal && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Produktionsmål</p>
+                  <p className="text-sm text-card-foreground">{selected.production_goal}</p>
+                </div>
+              )}
+              {selected.general_comment && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Kommentar</p>
+                  <p className="text-sm text-card-foreground">{selected.general_comment}</p>
+                </div>
+              )}
+              {selected.special_values && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Speciella värden</p>
+                  <p className="text-sm text-card-foreground">{selected.special_values}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {selected.raw_description_text && (
+            <div className="rounded-xl border border-border bg-card p-4 mb-6">
+              <p className="text-xs text-muted-foreground mb-1">Råtext från skogsbruksplan</p>
+              <p className="rounded-lg bg-muted/30 p-3 font-mono text-sm whitespace-pre-wrap text-card-foreground">{selected.raw_description_text}</p>
+            </div>
+          )}
+
+          <div className="rounded-xl border border-border bg-card p-4 mb-6">
+            <div className="flex items-center gap-2 mb-1">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-card-foreground">Planerad åtgärd</span>
+            </div>
+            <p className="text-lg font-semibold text-foreground">{selected.planned_action || "Ingen"} <span className="font-normal text-muted-foreground">– {selected.planned_year || "—"}</span></p>
+          </div>
+
+          {standActivities.length > 0 && (
+            <div className="rounded-xl border border-border bg-card overflow-hidden mb-6">
+              <div className="border-b border-border p-4"><h3 className="font-display text-lg text-card-foreground">Aktiviteter & historik</h3></div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Typ</TableHead>
+                    <TableHead>Datum</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Uttag (m³sk)</TableHead>
+                    <TableHead className="text-right">Kostnad</TableHead>
+                    <TableHead className="text-right">Intäkt</TableHead>
+                    <TableHead className="text-right">Bidrag</TableHead>
+                    <TableHead className="text-right">Netto</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {standActivities.map(a => (
+                    <TableRow key={a.id} className={a.is_completed ? "bg-muted/30" : ""}>
+                      <TableCell className="text-sm capitalize text-card-foreground">{a.type}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{a.is_completed ? a.completed_date || a.planned_date || "—" : a.planned_date || "—"}</TableCell>
+                      <TableCell>
+                        <Badge variant={a.is_completed ? "default" : "secondary"} className="text-xs">
+                          {a.is_completed ? "Genomförd" : a.status === "planned" ? "Planerad" : a.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right text-sm tabular-nums text-card-foreground">{a.harvested_volume_m3sk > 0 ? `${fmt(a.harvested_volume_m3sk)}` : "—"}</TableCell>
+                      <TableCell className="text-right text-sm tabular-nums text-muted-foreground">{fmtKr(a.estimated_cost)}</TableCell>
+                      <TableCell className="text-right text-sm tabular-nums text-card-foreground">{a.total_revenue > 0 ? fmtKr(a.total_revenue) : a.estimated_income > 0 ? fmtKr(a.estimated_income) : "—"}</TableCell>
+                      <TableCell className="text-right text-sm tabular-nums">{a.has_subsidy && a.subsidy_amount > 0 ? <span className="flex items-center justify-end gap-1 text-primary"><BadgeCheck className="h-3 w-3" />{fmtKr(a.subsidy_amount)}</span> : "—"}</TableCell>
+                      <TableCell className={cn("text-right text-sm font-semibold tabular-nums", a.estimated_net >= 0 ? "text-primary" : "text-card-foreground")}>
+                        {a.estimated_net >= 0 ? "+" : "−"}{fmtKr(Math.abs(a.estimated_net))}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="border-b border-border p-4"><h3 className="font-display text-lg text-card-foreground">Ekonomi – {selected.name}</h3></div>
+            {standTransactions.length === 0 ? (
+              <p className="p-4 text-sm text-muted-foreground">Inga transaktioner kopplade ännu.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Datum</TableHead>
+                    <TableHead>Beskrivning</TableHead>
+                    <TableHead className="text-right">Belopp</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {standTransactions.map(t => (
+                    <TableRow key={t.id}>
+                      <TableCell className="text-sm text-muted-foreground">{t.date}</TableCell>
+                      <TableCell className="text-sm text-card-foreground">{t.description}</TableCell>
+                      <TableCell className={cn("text-right text-sm font-semibold tabular-nums", t.type === "income" ? "text-primary" : "text-card-foreground")}>
+                        {t.type === "income" ? "+" : "−"}{fmtKr(t.amount)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
         </div>
-      </main>
+      </div>
     );
-  }
+  })() : null;
 
   // Stands for activity form filtered by selected property
   const standsForAct = newAct.property_id ? stands.filter(s => s.property_id === newAct.property_id) : [];
@@ -1044,6 +1035,8 @@ export default function Skogsbruksplan() {
         <SummaryCard label="Uppskattat värde" value={`${fmtKr(totalStats.varde)}`} highlight />
         <SummaryCard label="Årlig tillväxt" value={`${fmt(totalStats.tillvaxt)} m³sk`} />
       </div>
+
+      {selectedStandPanel}
 
       {/* Avdelningsbeskrivning - Collapsible */}
       <CollapsibleSection title="Avdelningsbeskrivning" icon={<Trees className="h-5 w-5 text-primary" />}>
