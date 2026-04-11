@@ -401,25 +401,37 @@ export default function Skogsbruksplan() {
 
         {standActivities.length > 0 && (
           <div className="rounded-xl border border-border bg-card overflow-hidden mb-6">
-            <div className="p-4 border-b border-border"><h3 className="font-display text-lg text-card-foreground">Aktiviteter</h3></div>
+            <div className="p-4 border-b border-border"><h3 className="font-display text-lg text-card-foreground">Aktiviteter & historik</h3></div>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Typ</TableHead>
                   <TableHead>Datum</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Uttag (m³sk)</TableHead>
                   <TableHead className="text-right">Kostnad</TableHead>
+                  <TableHead className="text-right">Intäkt</TableHead>
                   <TableHead className="text-right">Bidrag</TableHead>
                   <TableHead className="text-right">Netto</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {standActivities.map(a => (
-                  <TableRow key={a.id}>
+                  <TableRow key={a.id} className={a.is_completed ? "bg-muted/30" : ""}>
                     <TableCell className="text-sm text-card-foreground capitalize">{a.type}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{a.planned_date || "—"}</TableCell>
-                    <TableCell><Badge variant="secondary" className="text-xs">{a.status}</Badge></TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{a.is_completed ? a.completed_date || a.planned_date || "—" : a.planned_date || "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant={a.is_completed ? "default" : "secondary"} className="text-xs">
+                        {a.is_completed ? "Genomförd" : a.status === "planned" ? "Planerad" : a.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right text-sm tabular-nums text-card-foreground">
+                      {a.harvested_volume_m3sk > 0 ? `${fmt(a.harvested_volume_m3sk)}` : "—"}
+                    </TableCell>
                     <TableCell className="text-right text-sm tabular-nums text-muted-foreground">{fmtKr(a.estimated_cost)}</TableCell>
+                    <TableCell className="text-right text-sm tabular-nums text-card-foreground">
+                      {a.total_revenue > 0 ? fmtKr(a.total_revenue) : a.estimated_income > 0 ? fmtKr(a.estimated_income) : "—"}
+                    </TableCell>
                     <TableCell className="text-right text-sm tabular-nums">
                       {a.has_subsidy && a.subsidy_amount > 0 ? (
                         <span className="text-primary flex items-center justify-end gap-1"><BadgeCheck className="h-3 w-3" />{fmtKr(a.subsidy_amount)}</span>
