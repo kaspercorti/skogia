@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as pdfjsLib from "https://esm.sh/pdfjs-dist@4.8.69/legacy/build/pdf.mjs";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
