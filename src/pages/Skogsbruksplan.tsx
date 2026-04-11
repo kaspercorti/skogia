@@ -92,23 +92,50 @@ export default function Skogsbruksplan() {
 
   const handleAddStand = async () => {
     if (!newStand.name || !newStand.property_id || !user) return;
+    const num = (v: string) => v ? Number(v) : null;
+    const txt = (v: string) => v || null;
     const { error } = await supabase.from("stands").insert({
       property_id: newStand.property_id,
       name: newStand.name,
-      tree_species: newStand.tree_species || null,
+      tree_species: txt(newStand.tree_species),
       area_ha: Number(newStand.area_ha) || 0,
-      age: newStand.age ? Number(newStand.age) : null,
-      volume_m3sk: newStand.volume_m3sk ? Number(newStand.volume_m3sk) : null,
-      estimated_value: newStand.estimated_value ? Number(newStand.estimated_value) : null,
-      growth_rate_percent: newStand.growth_rate_percent ? Number(newStand.growth_rate_percent) : null,
-      planned_action: newStand.planned_action || null,
-      planned_year: newStand.planned_year ? Number(newStand.planned_year) : null,
-      notes: newStand.notes || null,
+      age: num(newStand.age) as any,
+      volume_m3sk: num(newStand.volume_m3sk),
+      volume_per_ha: num(newStand.volume_per_ha),
+      estimated_value: num(newStand.estimated_value),
+      growth_rate_percent: num(newStand.growth_rate_percent),
+      planned_action: txt(newStand.planned_action),
+      planned_year: num(newStand.planned_year) as any,
+      notes: txt(newStand.notes),
+      huggningsklass: txt(newStand.huggningsklass),
+      site_index: txt(newStand.site_index),
+      mean_diameter_cm: num(newStand.mean_diameter_cm),
+      mean_height_m: num(newStand.mean_height_m),
+      goal_class: txt(newStand.goal_class),
+      basal_area_m2: num(newStand.basal_area_m2),
+      annual_growth_m3sk: num(newStand.annual_growth_m3sk),
+      description: txt(newStand.description),
+      parcel_number: txt(newStand.parcel_number),
+      layer: txt(newStand.layer),
+      vegetation_type: txt(newStand.vegetation_type),
+      moisture_class: txt(newStand.moisture_class),
+      terrain_type: txt(newStand.terrain_type),
+      driving_conditions: txt(newStand.driving_conditions),
+      slope_info: txt(newStand.slope_info),
+      gyl_values: txt(newStand.gyl_values),
+      alternative_action: txt(newStand.alternative_action),
+      timing_code: txt(newStand.timing_code),
+      removal_percent: num(newStand.removal_percent),
+      removal_volume_m3sk: num(newStand.removal_volume_m3sk),
+      production_goal: txt(newStand.production_goal),
+      general_comment: txt(newStand.general_comment),
+      action_comment: txt(newStand.action_comment),
+      special_values: txt(newStand.special_values),
     });
     if (error) { toast.error("Kunde inte spara: " + error.message); return; }
     queryClient.invalidateQueries({ queryKey: ["stands"] });
     toast.success("Bestånd skapat");
-    setNewStand({ property_id: "", name: "", tree_species: "", area_ha: "", age: "", volume_m3sk: "", estimated_value: "", growth_rate_percent: "", planned_action: "", planned_year: "", notes: "" });
+    setNewStand(emptyStand);
     setStandDialogOpen(false);
   };
 
