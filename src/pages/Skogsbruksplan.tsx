@@ -829,7 +829,14 @@ export default function Skogsbruksplan() {
                       <Badge variant="secondary" className="text-xs font-normal whitespace-nowrap">{b.planned_action || "—"} {b.planned_year || ""}</Badge>
                     </TableCell>
                     <TableCell className="text-right text-sm font-semibold tabular-nums text-primary">{fmtKr(b.estimated_value ?? 0)}</TableCell>
-                    <TableCell><ChevronRight className="h-4 w-4 text-muted-foreground" /></TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={(e) => { e.stopPropagation(); openEditStand(b); }}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -842,6 +849,83 @@ export default function Skogsbruksplan() {
       <CollapsibleSection title="Kolkrediter" icon={<Leaf className="h-5 w-5 text-primary" />} className="mt-4">
         <CarbonCreditsSection stands={stands} />
       </CollapsibleSection>
+
+      {/* Edit Stand Dialog */}
+      <Dialog open={editStandDialogOpen} onOpenChange={setEditStandDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Redigera bestånd</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Grunddata</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Namn *</Label><Input value={editStand.name} onChange={e => setEditStand({ ...editStand, name: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Skifte</Label><Input value={editStand.parcel_number} onChange={e => setEditStand({ ...editStand, parcel_number: e.target.value })} /></div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5"><Label>Areal (ha)</Label><Input type="number" value={editStand.area_ha} onChange={e => setEditStand({ ...editStand, area_ha: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Ålder</Label><Input type="number" value={editStand.age} onChange={e => setEditStand({ ...editStand, age: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Skikt</Label><Input value={editStand.layer} onChange={e => setEditStand({ ...editStand, layer: e.target.value })} /></div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5"><Label>Hkl</Label><Input value={editStand.huggningsklass} onChange={e => setEditStand({ ...editStand, huggningsklass: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Bonitet (SI)</Label><Input value={editStand.site_index} onChange={e => setEditStand({ ...editStand, site_index: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Målklass</Label><Input value={editStand.goal_class} onChange={e => setEditStand({ ...editStand, goal_class: e.target.value })} /></div>
+            </div>
+
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-2">Virkesdata</p>
+            <div className="space-y-1.5"><Label>Trädslag</Label><Input value={editStand.tree_species} onChange={e => setEditStand({ ...editStand, tree_species: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Volym (m³sk)</Label><Input type="number" value={editStand.volume_m3sk} onChange={e => setEditStand({ ...editStand, volume_m3sk: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Volym/ha</Label><Input type="number" value={editStand.volume_per_ha} onChange={e => setEditStand({ ...editStand, volume_per_ha: e.target.value })} /></div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5"><Label>Diam (cm)</Label><Input type="number" value={editStand.mean_diameter_cm} onChange={e => setEditStand({ ...editStand, mean_diameter_cm: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Höjd (m)</Label><Input type="number" value={editStand.mean_height_m} onChange={e => setEditStand({ ...editStand, mean_height_m: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>G-yta (m²)</Label><Input type="number" value={editStand.basal_area_m2} onChange={e => setEditStand({ ...editStand, basal_area_m2: e.target.value })} /></div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5"><Label>Tillväxt (m³sk)</Label><Input type="number" value={editStand.annual_growth_m3sk} onChange={e => setEditStand({ ...editStand, annual_growth_m3sk: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Tillväxt (%)</Label><Input type="number" value={editStand.growth_rate_percent} onChange={e => setEditStand({ ...editStand, growth_rate_percent: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Värde (kr)</Label><Input type="number" value={editStand.estimated_value} onChange={e => setEditStand({ ...editStand, estimated_value: e.target.value })} /></div>
+            </div>
+
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-2">Åtgärdsdata</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Åtgärd</Label><Input value={editStand.planned_action} onChange={e => setEditStand({ ...editStand, planned_action: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Alt. åtgärd</Label><Input value={editStand.alternative_action} onChange={e => setEditStand({ ...editStand, alternative_action: e.target.value })} /></div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5"><Label>När/prioritet</Label><Input value={editStand.timing_code} onChange={e => setEditStand({ ...editStand, timing_code: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Planerat år</Label><Input type="number" value={editStand.planned_year} onChange={e => setEditStand({ ...editStand, planned_year: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Uttag (%)</Label><Input type="number" value={editStand.removal_percent} onChange={e => setEditStand({ ...editStand, removal_percent: e.target.value })} /></div>
+            </div>
+            <div className="space-y-1.5"><Label>Uttag inkl. tillväxt (m³sk)</Label><Input type="number" value={editStand.removal_volume_m3sk} onChange={e => setEditStand({ ...editStand, removal_volume_m3sk: e.target.value })} /></div>
+
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-2">Mark & terräng</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Vegetationstyp</Label><Input value={editStand.vegetation_type} onChange={e => setEditStand({ ...editStand, vegetation_type: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Fuktighet</Label><Input value={editStand.moisture_class} onChange={e => setEditStand({ ...editStand, moisture_class: e.target.value })} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Terräng</Label><Input value={editStand.terrain_type} onChange={e => setEditStand({ ...editStand, terrain_type: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Drivning</Label><Input value={editStand.driving_conditions} onChange={e => setEditStand({ ...editStand, driving_conditions: e.target.value })} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>GYL</Label><Input value={editStand.gyl_values} onChange={e => setEditStand({ ...editStand, gyl_values: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Lutning</Label><Input value={editStand.slope_info} onChange={e => setEditStand({ ...editStand, slope_info: e.target.value })} /></div>
+            </div>
+
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-2">Beskrivningar</p>
+            <div className="space-y-1.5"><Label>Beskrivning</Label><Textarea value={editStand.description} onChange={e => setEditStand({ ...editStand, description: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Produktionsmål</Label><Input value={editStand.production_goal} onChange={e => setEditStand({ ...editStand, production_goal: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Generell kommentar</Label><Textarea value={editStand.general_comment} onChange={e => setEditStand({ ...editStand, general_comment: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Åtgärdskommentar</Label><Textarea value={editStand.action_comment} onChange={e => setEditStand({ ...editStand, action_comment: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Speciella värden</Label><Input value={editStand.special_values} onChange={e => setEditStand({ ...editStand, special_values: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Anteckningar</Label><Textarea value={editStand.notes || ""} onChange={e => setEditStand({ ...editStand, notes: e.target.value })} /></div>
+
+            <Button onClick={handleUpdateStand} className="mt-2 w-full">Spara ändringar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
