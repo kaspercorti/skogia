@@ -471,8 +471,7 @@ serve(async (req) => {
     userId = user.id;
     adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    await adminClient
-      .from("forest_plan_imports")
+    await (adminClient.from("forest_plan_imports") as any)
       .update({ status: "processing" })
       .eq("id", importId)
       .eq("user_id", user.id);
@@ -500,8 +499,7 @@ serve(async (req) => {
 
     if (!aiResponse.ok) {
       const status = aiResponse.status;
-      await adminClient
-        .from("forest_plan_imports")
+      await (adminClient.from("forest_plan_imports") as any)
         .update({ status: "failed", notes: `AI error: ${status}` })
         .eq("id", importId)
         .eq("user_id", user.id);
@@ -519,8 +517,7 @@ serve(async (req) => {
     const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
 
     if (!toolCall?.function?.arguments) {
-      await adminClient
-        .from("forest_plan_imports")
+      await (adminClient.from("forest_plan_imports") as any)
         .update({ status: "failed", notes: "AI kunde inte tolka PDF:en" })
         .eq("id", importId)
         .eq("user_id", user.id);
@@ -529,8 +526,7 @@ serve(async (req) => {
 
     const parsed = enrichParsedResult(JSON.parse(toolCall.function.arguments), structuredText);
 
-    const { error: updateError } = await adminClient
-      .from("forest_plan_imports")
+    const { error: updateError } = await (adminClient.from("forest_plan_imports") as any)
       .update({
         status: "review_pending",
         extracted_stands_count: parsed.stands.length,
@@ -548,8 +544,7 @@ serve(async (req) => {
     console.error("parse-forest-plan error:", error);
 
     if (adminClient && importId && userId) {
-      await adminClient
-        .from("forest_plan_imports")
+      await (adminClient.from("forest_plan_imports") as any)
         .update({
           status: "failed",
           notes: error instanceof Error ? error.message : "Unknown error",
