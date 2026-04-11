@@ -1036,7 +1036,7 @@ export default function Skogsbruksplan() {
         <SummaryCard label="Årlig tillväxt" value={`${fmt(totalStats.tillvaxt)} m³sk`} />
       </div>
 
-      {selectedStandPanel}
+      
 
       {/* Avdelningsbeskrivning - Collapsible */}
       <CollapsibleSection title="Avdelningsbeskrivning" icon={<Trees className="h-5 w-5 text-primary" />}>
@@ -1066,7 +1066,11 @@ export default function Skogsbruksplan() {
                 <TableRow><TableCell colSpan={15} className="text-center text-muted-foreground py-8">Inga bestånd ännu – lägg till en fastighet och bestånd ovan</TableCell></TableRow>
               ) : (
                 stands.map(b => (
-                  <TableRow key={b.id} className="cursor-pointer" onClick={() => setSelectedId(b.id)}>
+                  <TableRow
+                    key={b.id}
+                    className={cn("cursor-pointer", selectedId === b.id && "bg-primary/5")}
+                    onClick={() => setSelectedId(b.id)}
+                  >
                     <TableCell>
                       <p className="text-sm font-medium text-card-foreground whitespace-nowrap">{b.name}</p>
                     </TableCell>
@@ -1090,7 +1094,7 @@ export default function Skogsbruksplan() {
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={(e) => { e.stopPropagation(); openEditStand(b); }}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", selectedId === b.id && "text-primary")}/>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -1100,6 +1104,8 @@ export default function Skogsbruksplan() {
           </Table>
         </div>
       </CollapsibleSection>
+
+      {selectedStandPanel}
 
       {/* Kolkrediter - Collapsible */}
       <CollapsibleSection title="Kolkrediter" icon={<Leaf className="h-5 w-5 text-primary" />} className="mt-4">
