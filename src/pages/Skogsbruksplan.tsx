@@ -206,21 +206,29 @@ export default function Skogsbruksplan() {
     if (!newAct.type || !newAct.property_id || !user) return;
     const income = Number(newAct.estimated_income) || 0;
     const cost = Number(newAct.estimated_cost) || 0;
+    const subsidyAmt = newAct.has_subsidy ? (Number(newAct.subsidy_amount) || 0) : 0;
     const { error } = await supabase.from("forest_activities").insert({
       property_id: newAct.property_id,
       stand_id: newAct.stand_id && newAct.stand_id !== "none" ? newAct.stand_id : null,
-      type: newAct.type,
+      type: newAct.type === "övrigt" && newAct.custom_type ? newAct.custom_type : newAct.type,
+      custom_type: newAct.type === "övrigt" ? newAct.custom_type || null : null,
       planned_date: newAct.planned_date || null,
       estimated_income: income,
       estimated_cost: cost,
-      estimated_net: income - cost,
+      estimated_net: income - cost + subsidyAmt,
       status: "planned",
       notes: newAct.notes || null,
+      has_subsidy: newAct.has_subsidy,
+      subsidy_type: newAct.has_subsidy ? newAct.subsidy_type || null : null,
+      subsidy_amount: subsidyAmt,
+      subsidy_status: newAct.has_subsidy ? newAct.subsidy_status || "planned" : null,
+      subsidy_date: newAct.has_subsidy && newAct.subsidy_date ? newAct.subsidy_date : null,
+      subsidy_notes: newAct.has_subsidy ? newAct.subsidy_notes || null : null,
     });
     if (error) { toast.error("Kunde inte spara: " + error.message); return; }
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
     toast.success("Aktivitet skapad");
-    setNewAct({ property_id: "", stand_id: "", type: "", planned_date: "", estimated_income: "", estimated_cost: "", notes: "" });
+    setNewAct(emptyAct);
     setActDialogOpen(false);
   };
 
