@@ -53,7 +53,12 @@ serve(async (req) => {
     // Download PDF as base64
     const pdfResp = await fetch(signedData.signedUrl);
     const pdfBuffer = await pdfResp.arrayBuffer();
-    const base64Pdf = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
+    const bytes = new Uint8Array(pdfBuffer);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64Pdf = btoa(binary);
 
     // Call AI to extract stand data from the forest plan PDF
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
