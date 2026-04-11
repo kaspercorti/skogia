@@ -682,7 +682,7 @@ export default function Skogsbruksplan() {
                         <Badge
                           variant={a.is_completed ? "default" : "secondary"}
                           className="text-xs cursor-pointer hover:opacity-80"
-                          onClick={() => handleToggleActivityStatus(a)}
+                          onClick={(e) => { e.stopPropagation(); handleToggleActivityStatus(a); }}
                           title={a.is_completed ? "Klicka för att ändra till planerad" : "Klicka för att markera som genomförd"}
                         >
                           {a.is_completed ? "Genomförd" : a.status === "planned" ? "Planerad" : a.status}
