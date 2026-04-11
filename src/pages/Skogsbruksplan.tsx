@@ -1079,10 +1079,10 @@ export default function Skogsbruksplan() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {stands.length === 0 ? (
+              {sortedStands.length === 0 ? (
                 <TableRow><TableCell colSpan={15} className="text-center text-muted-foreground py-8">Inga bestånd ännu – lägg till en fastighet och bestånd ovan</TableCell></TableRow>
               ) : (
-                stands.map(b => (
+                sortedStands.map(b => (
                   <TableRow
                     key={b.id}
                     className={cn("cursor-pointer", selectedId === b.id && "bg-primary/5")}
@@ -1120,9 +1120,12 @@ export default function Skogsbruksplan() {
             </TableBody>
           </Table>
         </div>
+        {selectedStandPanel && (
+          <div ref={detailPanelRef} className="mt-4">
+            {selectedStandPanel}
+          </div>
+        )}
       </CollapsibleSection>
-
-      {selectedStandPanel}
 
       {/* Kolkrediter - Collapsible */}
       <CollapsibleSection title="Kolkrediter" icon={<Leaf className="h-5 w-5 text-primary" />} className="mt-4">
