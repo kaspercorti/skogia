@@ -150,10 +150,72 @@ export default function Skogsbruksplan() {
           <DetailCard label="Uppskattat värde" value={fmtKr(selected.estimated_value ?? 0)} />
         </div>
 
-        {selected.description && (
+        {/* Mark & terräng */}
+        {(selected.vegetation_type || selected.moisture_class || selected.terrain_type || selected.driving_conditions || selected.gyl_values || selected.slope_info) && (
           <div className="rounded-xl border border-border bg-card p-4 mb-6">
-            <p className="text-xs text-muted-foreground mb-1">Beskrivning</p>
-            <p className="text-sm text-card-foreground">{selected.description}</p>
+            <p className="text-xs font-semibold text-muted-foreground mb-2">Mark & terräng</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {selected.vegetation_type && <DetailCard label="Vegetationstyp" value={selected.vegetation_type} small />}
+              {selected.moisture_class && <DetailCard label="Fuktighet" value={selected.moisture_class} small />}
+              {selected.terrain_type && <DetailCard label="Terräng" value={selected.terrain_type} small />}
+              {selected.driving_conditions && <DetailCard label="Drivning" value={selected.driving_conditions} small />}
+              {selected.gyl_values && <DetailCard label="GYL" value={selected.gyl_values} small />}
+              {selected.slope_info && <DetailCard label="Lutning" value={selected.slope_info} small />}
+            </div>
+          </div>
+        )}
+
+        {/* Trädslagsfördelning */}
+        {selected.species_breakdown && Array.isArray(selected.species_breakdown) && (selected.species_breakdown as any[]).length > 0 && (
+          <div className="rounded-xl border border-border bg-card p-4 mb-6">
+            <p className="text-xs font-semibold text-muted-foreground mb-2">Trädslagsfördelning</p>
+            <div className="flex flex-wrap gap-3">
+              {(selected.species_breakdown as any[]).map((sp: any, i: number) => (
+                <div key={i} className="rounded-lg border border-border bg-muted/30 px-3 py-1.5">
+                  <span className="text-sm font-medium text-foreground">{sp.species}</span>
+                  {sp.percent != null && <span className="text-xs text-muted-foreground ml-1.5">{sp.percent}%</span>}
+                  {sp.volume_m3sk != null && <span className="text-xs text-muted-foreground ml-1.5">({sp.volume_m3sk} m³sk)</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Descriptions */}
+        {(selected.description || selected.production_goal || selected.general_comment || selected.special_values) && (
+          <div className="rounded-xl border border-border bg-card p-4 mb-6 space-y-3">
+            {selected.description && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Beskrivning</p>
+                <p className="text-sm text-card-foreground">{selected.description}</p>
+              </div>
+            )}
+            {selected.production_goal && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Produktionsmål</p>
+                <p className="text-sm text-card-foreground">{selected.production_goal}</p>
+              </div>
+            )}
+            {selected.general_comment && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Kommentar</p>
+                <p className="text-sm text-card-foreground">{selected.general_comment}</p>
+              </div>
+            )}
+            {selected.special_values && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Speciella värden</p>
+                <p className="text-sm text-card-foreground">{selected.special_values}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Raw text */}
+        {selected.raw_description_text && (
+          <div className="rounded-xl border border-border bg-card p-4 mb-6">
+            <p className="text-xs text-muted-foreground mb-1">Råtext från skogsbruksplan</p>
+            <p className="text-sm text-card-foreground whitespace-pre-wrap font-mono bg-muted/30 p-3 rounded-lg">{selected.raw_description_text}</p>
           </div>
         )}
 
