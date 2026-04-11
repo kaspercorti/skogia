@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import {
   Calculator, Zap, ArrowRight, TrendingDown, Lightbulb,
   Sliders as SliderIcon, Check, Trophy, Save, Trash2, ChevronDown, ChevronUp,
+  AlertTriangle,
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ import {
   fmt, calcResultat,
   type ForestActivity, type TaxScenario,
 } from "@/hooks/useSkogskollData";
+import { useLossCarryForwards, applyLossCarryForwards, useSaveLossCarryForward } from "@/hooks/useLossCarryForwards";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -67,6 +69,8 @@ interface SimScenario {
   totalIncome: number;
   totalCost: number;
   resultat: number;
+  lossUsed: number;
+  taxableResultat: number;
   tax: number;
   netAfterTax: number;
 }
@@ -85,6 +89,7 @@ function buildScenario(
   uttagPercent: number,
   extraIncome: number,
   extraExpenses: number,
+  losses: import("@/hooks/useLossCarryForwards").LossCarryForward[] = [],
 ): SimScenario {
   const selected = activities.filter(a => selectedActivityIds.includes(a.id));
   const actIncome = selected.reduce((s, a) => s + a.estimated_income, 0);
@@ -94,12 +99,16 @@ function buildScenario(
   const totalIncome = baseResultat + grownIncome + extraIncome;
   const totalCost = actCost + extraExpenses;
   const resultat = totalIncome - totalCost;
-  const tax = calcTaxDetailed(resultat);
-  const netAfterTax = resultat - tax;
+  const lossInfo = applyLossCarryForwards(resultat, losses);
+  const tax = calcTaxDetailed(lossInfo.taxableResultat);
+  const netAfterTax = lossInfo.taxableResultat - tax;
   return {
     id: makeScenarioId(), name, year, selectedActivityIds, uttagPercent,
     extraIncome, extraExpenses,
-    totalIncome, totalCost, resultat, tax, netAfterTax,
+    totalIncome, totalCost, resultat,
+    lossUsed: lossInfo.lossUsed,
+    taxableResultat: lossInfo.taxableResultat,
+    tax, netAfterTax,
   };
 }
 
@@ -110,11 +119,26 @@ export default function Skatteplanering() {
   const { data: activities = [] } = useForestActivities();
   const { data: stands = [] } = useStands();
   const { data: savedScenarios = [] } = useTaxScenarios();
+  const { data: lossCarryForwards = [] } = useLossCarryForwards();
+  const saveLoss = useSaveLossCarryForward();
 
   const year = new Date().getFullYear();
   const currentResultat = calcResultat(transactions, year);
-  const currentTax = calcTaxDetailed(currentResultat);
-  const currentNet = currentResultat - currentTax;
+
+  // Apply loss carry-forwards to current result
+  const lossResult = useMemo(
+    () => applyLossCarryForwards(currentResultat, lossCarryForwards),
+    [currentResultat, lossCarryForwards]
+  );
+
+  const currentTax = calcTaxDetailed(lossResult.taxableResultat);
+  const currentNet = lossResult.taxableResultat - currentTax;
+
+  // Check if current year creates a new loss
+  const currentYearCreatesLoss = currentResultat < 0;
+  const currentYearLossAmount = currentYearCreatesLoss ? Math.abs(currentResultat) : 0;
+  const existingLossForYear = lossCarryForwards.find(l => l.year === year);
+  const canSaveCurrentLoss = currentYearCreatesLoss && !existingLossForYear;
 
   const plannedActivities = activities.filter(a => a.status === "planned");
   const totalPlannedIncome = plannedActivities.reduce((s, a) => s + a.estimated_income, 0);
@@ -137,8 +161,8 @@ export default function Skatteplanering() {
 
   const currentSim = useMemo(() => buildScenario(
     scenarioName, scenarioYear, selectedIds, activities, currentResultat,
-    uttagPercent, extraIncome, extraExpenses,
-  ), [scenarioName, scenarioYear, selectedIds, activities, currentResultat, uttagPercent, extraIncome, extraExpenses]);
+    uttagPercent, extraIncome, extraExpenses, lossCarryForwards,
+  ), [scenarioName, scenarioYear, selectedIds, activities, currentResultat, uttagPercent, extraIncome, extraExpenses, lossCarryForwards]);
 
   const addScenario = useCallback(() => {
     setSimScenarios(prev => [...prev, { ...currentSim, id: makeScenarioId() }]);
@@ -159,13 +183,13 @@ export default function Skatteplanering() {
     if (plannedActivities.length === 0) return [];
     const allIds = plannedActivities.map(a => a.id);
     return [
-      buildScenario("Avverka allt i år", year, allIds, activities, currentResultat, 100, 0, 0),
-      buildScenario("Avverka allt nästa år", year + 1, allIds, activities, currentResultat, 100, 0, 0),
-      buildScenario("Vänta 2 år", year + 2, allIds, activities, currentResultat, 100, 0, 0),
-      buildScenario("Halvt uttag i år", year, allIds, activities, currentResultat, 50, 0, 0),
-      buildScenario("Halvt uttag nästa år", year + 1, allIds, activities, currentResultat, 50, 0, 0),
+      buildScenario("Avverka allt i år", year, allIds, activities, currentResultat, 100, 0, 0, lossCarryForwards),
+      buildScenario("Avverka allt nästa år", year + 1, allIds, activities, currentResultat, 100, 0, 0, lossCarryForwards),
+      buildScenario("Vänta 2 år", year + 2, allIds, activities, currentResultat, 100, 0, 0, lossCarryForwards),
+      buildScenario("Halvt uttag i år", year, allIds, activities, currentResultat, 50, 0, 0, lossCarryForwards),
+      buildScenario("Halvt uttag nästa år", year + 1, allIds, activities, currentResultat, 50, 0, 0, lossCarryForwards),
     ];
-  }, [plannedActivities, activities, currentResultat, year]);
+  }, [plannedActivities, activities, currentResultat, year, lossCarryForwards]);
 
   /* ── Recommendations ── */
   const allCompare = [...simScenarios, ...quickScenarios];
@@ -238,18 +262,25 @@ export default function Skatteplanering() {
       {/* ═══ Section 1: Nuvarande skattesituation ═══ */}
       <section>
         <h2 className="font-display text-lg font-semibold text-foreground mb-3">Nuvarande skattesituation {year}</h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground mb-1">Resultat</p>
             <p className="text-lg font-bold tabular-nums text-card-foreground">{fmtK(currentResultat)}</p>
           </div>
+          {lossResult.lossUsed > 0 && (
+            <div className="rounded-xl border border-accent/30 bg-accent/5 p-4">
+              <p className="text-xs text-muted-foreground mb-1">Underskottsavdrag</p>
+              <p className="text-lg font-bold tabular-nums text-accent">-{fmtK(lossResult.lossUsed)}</p>
+              <p className="text-xs text-muted-foreground">Beskattningsbart: {fmtK(lossResult.taxableResultat)}</p>
+            </div>
+          )}
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground mb-1">Beräknad skatt</p>
             <p className="text-lg font-bold tabular-nums text-destructive">{fmtK(currentTax)}</p>
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground mb-1">Effektiv skattesats</p>
-            <p className="text-lg font-bold tabular-nums text-card-foreground">{calcEffectiveRate(currentResultat, currentTax)}%</p>
+            <p className="text-lg font-bold tabular-nums text-card-foreground">{calcEffectiveRate(lossResult.taxableResultat, currentTax)}%</p>
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground mb-1">Netto efter skatt</p>
@@ -262,6 +293,83 @@ export default function Skatteplanering() {
           </div>
         </div>
       </section>
+
+      {/* ═══ Section 1b: Underskott ═══ */}
+      {(lossCarryForwards.length > 0 || currentYearCreatesLoss) && (
+        <section className="rounded-xl border border-accent/20 bg-card p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-accent" />
+            <h2 className="font-display text-lg font-semibold text-foreground">Underskottsavdrag</h2>
+          </div>
+
+          {currentYearCreatesLoss && (
+            <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+              <p className="text-sm text-foreground">
+                Årets resultat är <span className="font-semibold text-destructive">{fmtK(currentResultat)}</span>.
+                Detta ger ett underskott på <span className="font-semibold">{fmtK(currentYearLossAmount)}</span> som kan användas kommande år.
+              </p>
+              {canSaveCurrentLoss && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-2 gap-1.5"
+                  onClick={() => saveLoss.mutate({ year, amount: currentYearLossAmount })}
+                  disabled={saveLoss.isPending}
+                >
+                  <Save className="h-3.5 w-3.5" /> Spara underskott för {year}
+                </Button>
+              )}
+              {existingLossForYear && (
+                <p className="text-xs text-muted-foreground mt-2">Underskott för {year} redan sparat ({fmtK(existingLossForYear.original_amount)})</p>
+              )}
+            </div>
+          )}
+
+          {lossCarryForwards.length > 0 && (
+            <div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                <div className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Ackumulerat underskott</p>
+                  <p className="text-lg font-bold tabular-nums text-card-foreground">
+                    {fmtK(lossCarryForwards.reduce((s, l) => s + l.original_amount, 0))}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Används {year}</p>
+                  <p className="text-lg font-bold tabular-nums text-accent">{fmtK(lossResult.lossUsed)}</p>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Kvar att använda</p>
+                  <p className="text-lg font-bold tabular-nums text-card-foreground">{fmtK(lossResult.remainingLosses)}</p>
+                </div>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>År</TableHead>
+                    <TableHead className="text-right">Ursprungligt</TableHead>
+                    <TableHead className="text-right">Kvar</TableHead>
+                    <TableHead className="text-right">Används {year}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {lossCarryForwards.map(l => {
+                    const detail = lossResult.lossDetails.find(d => d.year === l.year);
+                    return (
+                      <TableRow key={l.id}>
+                        <TableCell className="font-medium">{l.year}</TableCell>
+                        <TableCell className="text-right tabular-nums">{fmtK(l.original_amount)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{fmtK(l.remaining_amount)}</TableCell>
+                        <TableCell className="text-right tabular-nums text-accent">{detail?.used ? fmtK(detail.used) : "–"}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* ═══ Section 2: Rekommendation banner ═══ */}
       {bestTax && bestNet && (
