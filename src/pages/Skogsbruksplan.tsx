@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { useProperties, useStands, useForestActivities, useTransactions, fmt as fmtKr } from "@/hooks/useSkogskollData";
 import CarbonCreditsSection from "@/components/forest/CarbonCreditsSection";
+import ActivityFormFields, { emptyActivityForm, HARVEST_TYPES, type ActivityFormData } from "@/components/forest/ActivityFormFields";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
@@ -69,14 +70,7 @@ export default function Skogsbruksplan() {
   // Edit stand form
   const [editStand, setEditStand] = useState(emptyStand);
   // New activity form
-  const emptyAct = {
-    property_id: "", stand_id: "", type: "", custom_type: "", planned_date: "",
-    estimated_income: "", estimated_cost: "", notes: "",
-    has_subsidy: false, subsidy_type: "", subsidy_amount: "", subsidy_status: "planned", subsidy_date: "", subsidy_notes: "",
-    harvested_volume_m3sk: "", sold_volume_m3sk: "", price_per_m3sk: "", total_revenue: "", cost_per_m3sk: "",
-    is_completed: false, completed_date: "", affects_forest_plan: true,
-  };
-  const [newAct, setNewAct] = useState(emptyAct);
+  const [newAct, setNewAct] = useState<ActivityFormData>(emptyActivityForm);
 
   const selected = stands.find(b => b.id === selectedId);
   const fmt = (n: number) => n.toLocaleString("sv-SE");
@@ -224,24 +218,24 @@ export default function Skogsbruksplan() {
   const handleAddActivity = async () => {
     if (!newAct.type || !newAct.property_id || !user) return;
     const income = Number(newAct.estimated_income) || 0;
-    const cost = Number(newAct.estimated_cost) || 0;
+    const cost = Number(newAct.estimated_cost) || Number(newAct.total_cost) || 0;
     const subsidyAmt = newAct.has_subsidy ? (Number(newAct.subsidy_amount) || 0) : 0;
-    const harvestedVol = Number(newAct.harvested_volume_m3sk) || 0;
-    const soldVol = Number(newAct.sold_volume_m3sk) || harvestedVol;
-    const pricePerM3 = newAct.price_per_m3sk ? Number(newAct.price_per_m3sk) : null;
-    const totalRev = Number(newAct.total_revenue) || (pricePerM3 && soldVol ? pricePerM3 * soldVol : 0);
+    const isHarvest = HARVEST_TYPES.includes(newAct.type);
+    const harvestedVol = isHarvest ? (Number(newAct.harvested_volume_m3sk) || 0) : 0;
+    const soldVol = isHarvest ? (Number(newAct.sold_volume_m3sk) || harvestedVol) : 0;
+    const pricePerM3 = isHarvest && newAct.price_per_m3sk ? Number(newAct.price_per_m3sk) : null;
+    const totalRev = isHarvest ? (Number(newAct.total_revenue) || (pricePerM3 && soldVol ? pricePerM3 * soldVol : 0)) : 0;
     const finalIncome = totalRev > 0 ? totalRev : income;
 
-    // Validation: check volume doesn't exceed stand
     const selectedStand = newAct.stand_id && newAct.stand_id !== "none" ? stands.find(s => s.id === newAct.stand_id) : null;
-    if (newAct.is_completed && newAct.affects_forest_plan && selectedStand && harvestedVol > 0) {
+    if (isHarvest && newAct.is_completed && newAct.affects_forest_plan && selectedStand && harvestedVol > 0) {
       const currentVol = selectedStand.volume_m3sk ?? 0;
       if (harvestedVol > currentVol) {
         toast.error(`Uttaget (${harvestedVol} m³sk) överstiger beståndets virkesförråd (${currentVol} m³sk)`);
         return;
       }
     }
-    if (newAct.is_completed && newAct.affects_forest_plan && harvestedVol > 0 && (!newAct.stand_id || newAct.stand_id === "none")) {
+    if (isHarvest && newAct.is_completed && newAct.affects_forest_plan && harvestedVol > 0 && (!newAct.stand_id || newAct.stand_id === "none")) {
       toast.error("Välj ett bestånd för att kunna uppdatera skogsbruksplanen");
       return;
     }
@@ -269,13 +263,28 @@ export default function Skogsbruksplan() {
       total_revenue: totalRev,
       is_completed: newAct.is_completed,
       completed_date: newAct.is_completed ? (newAct.completed_date || new Date().toISOString().slice(0, 10)) : null,
-      affects_forest_plan: newAct.affects_forest_plan,
+      affects_forest_plan: isHarvest ? newAct.affects_forest_plan : false,
       plan_updated: false,
+      // New type-specific fields
+      area_ha: Number(newAct.area_ha) || null,
+      length_meters: Number(newAct.length_meters) || null,
+      plant_count: Number(newAct.plant_count) || null,
+      plants_per_ha: Number(newAct.plants_per_ha) || null,
+      fertilizer_amount: Number(newAct.fertilizer_amount) || null,
+      fertilizer_unit: newAct.fertilizer_unit || null,
+      cost_per_ha: Number(newAct.cost_per_ha) || null,
+      cost_per_meter: Number(newAct.cost_per_meter) || null,
+      total_cost: Number(newAct.total_cost) || null,
+      work_description: newAct.work_description || null,
+      quantity: Number(newAct.quantity) || null,
+      quantity_unit: newAct.quantity_unit || null,
+      tree_species: newAct.tree_species || null,
+      work_type: newAct.work_type || null,
     } as any);
     if (error) { toast.error("Kunde inte spara: " + error.message); return; }
 
-    // Auto-update stand volume
-    if (newAct.is_completed && newAct.affects_forest_plan && selectedStand && harvestedVol > 0) {
+    // Auto-update stand volume only for harvest types
+    if (isHarvest && newAct.is_completed && newAct.affects_forest_plan && selectedStand && harvestedVol > 0) {
       const currentVol = selectedStand.volume_m3sk ?? 0;
       const newVol = currentVol - harvestedVol;
       const { error: standErr } = await supabase.from("stands").update({
@@ -285,7 +294,6 @@ export default function Skogsbruksplan() {
       if (standErr) {
         toast.error("Aktivitet sparad men kunde inte uppdatera beståndet: " + standErr.message);
       } else {
-        // Mark activity as plan_updated
         await supabase.from("forest_activities").update({ plan_updated: true } as any).eq("stand_id", selectedStand.id).eq("is_completed", true).eq("plan_updated", false);
         toast.success(`Virkesförråd uppdaterat: ${fmt(currentVol)} → ${fmt(newVol)} m³sk`);
       }
@@ -294,7 +302,7 @@ export default function Skogsbruksplan() {
 
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
     toast.success("Aktivitet skapad");
-    setNewAct(emptyAct);
+    setNewAct(emptyActivityForm);
     setActDialogOpen(false);
   };
 
@@ -938,100 +946,53 @@ export default function Skogsbruksplan() {
                   )}
                 </div>
 
-                {/* Volym / Uttag – visas vid relevanta åtgärdstyper */}
-                {["slutavverkning", "gallring", "röjning"].includes(newAct.type) && (
-                  <div className="rounded-lg border border-border p-3 space-y-3">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Volym & intäkt</p>
+                {/* Dynamic type-specific fields */}
+                {newAct.type && (
+                  <ActivityFormFields
+                    data={newAct}
+                    onChange={setNewAct}
+                    stands={standsForAct}
+                  />
+                )}
+
+                {/* Ekonomi – only for harvest types that use cost_per_m3sk */}
+                {HARVEST_TYPES.includes(newAct.type) && (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3">
+                    <p className="text-xs font-semibold text-primary uppercase tracking-wide">Ekonomi</p>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Uttag / såld volym (m³sk)</Label>
-                        <Input type="number" placeholder="0" className="h-8 text-sm" value={newAct.harvested_volume_m3sk} onChange={e => {
-                          const v = e.target.value;
-                          const price = Number(newAct.price_per_m3sk) || 0;
-                          const autoRev = price && Number(v) ? (price * Number(v)).toString() : newAct.total_revenue;
-                          setNewAct({ ...newAct, harvested_volume_m3sk: v, sold_volume_m3sk: v, total_revenue: autoRev });
-                        }} />
+                        <Label>Beräknad intäkt (kr)</Label>
+                        <Input type="number" placeholder="0" value={newAct.estimated_income} onChange={e => setNewAct({ ...newAct, estimated_income: e.target.value })} />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Pris per m³sk (kr)</Label>
-                        <Input type="number" placeholder="Valfritt" className="h-8 text-sm" value={newAct.price_per_m3sk} onChange={e => {
-                          const p = e.target.value;
+                        <Label>Kostnad per m³sk (kr)</Label>
+                        <Input type="number" placeholder="0" value={newAct.cost_per_m3sk ?? ""} onChange={e => {
+                          const costPerM3 = e.target.value;
                           const vol = Number(newAct.harvested_volume_m3sk) || 0;
-                          const autoRev = Number(p) && vol ? (Number(p) * vol).toString() : "";
-                          setNewAct({ ...newAct, price_per_m3sk: p, total_revenue: autoRev, estimated_income: autoRev });
+                          const totalCost = vol > 0 && Number(costPerM3) > 0 ? Math.round(vol * Number(costPerM3)) : Number(costPerM3) > 0 ? Number(costPerM3) : 0;
+                          setNewAct({ ...newAct, cost_per_m3sk: costPerM3, estimated_cost: String(totalCost) });
                         }} />
                       </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Total intäkt (kr)</Label>
-                      <Input type="number" placeholder="Beräknas automatiskt" className="h-8 text-sm" value={newAct.total_revenue} onChange={e => setNewAct({ ...newAct, total_revenue: e.target.value, estimated_income: e.target.value })} />
-                    </div>
-
-                    {/* Påverkan på bestånd */}
-                    {newAct.is_completed && newAct.stand_id && newAct.stand_id !== "none" && Number(newAct.harvested_volume_m3sk) > 0 && (() => {
-                      const stand = stands.find(s => s.id === newAct.stand_id);
-                      if (!stand) return null;
-                      const currentVol = stand.volume_m3sk ?? 0;
-                      const harvested = Number(newAct.harvested_volume_m3sk) || 0;
-                      const newVol = currentVol - harvested;
-                      const overLimit = harvested > currentVol;
+                    {(Number(newAct.estimated_income) > 0 || Number(newAct.estimated_cost) > 0) && (() => {
+                      const income = Number(newAct.estimated_income) || 0;
+                      const cost = Number(newAct.estimated_cost) || 0;
+                      const vol = Number(newAct.harvested_volume_m3sk) || 0;
+                      const netto = income - cost;
+                      const nettoPerM3 = vol > 0 ? netto / vol : null;
                       return (
-                        <div className={cn("rounded-md p-2 text-xs space-y-0.5", overLimit ? "bg-destructive/10 border border-destructive/30" : "bg-muted/50")}>
-                          <p className="font-semibold text-muted-foreground mb-1">Påverkan på bestånd: {stand.name}</p>
-                          <div className="flex justify-between"><span className="text-muted-foreground">Nuvarande virkesförråd:</span><span className="text-foreground">{fmt(currentVol)} m³sk</span></div>
-                          <div className="flex justify-between"><span className="text-muted-foreground">Uttag:</span><span className="text-foreground">−{fmt(harvested)} m³sk</span></div>
-                          <div className={cn("flex justify-between border-t border-border pt-0.5 font-semibold", overLimit ? "text-destructive" : "text-primary")}>
-                            <span>Kvar i beståndet:</span><span>{fmt(Math.max(0, newVol))} m³sk</span>
-                          </div>
-                          {overLimit && <p className="text-destructive font-medium mt-1">⚠ Uttaget överstiger tillgängligt virkesförråd!</p>}
+                        <div className="rounded-md bg-muted/50 p-2 text-xs space-y-0.5">
+                          <div className="flex justify-between"><span className="text-muted-foreground">Intäkt:</span><span className="text-foreground">{income.toLocaleString("sv-SE")} kr</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">Kostnad ({Number(newAct.cost_per_m3sk) || 0} kr/m³sk × {vol} m³sk):</span><span className="text-destructive">−{cost.toLocaleString("sv-SE")} kr</span></div>
+                          <div className="flex justify-between border-t border-border pt-0.5 font-semibold"><span className="text-muted-foreground">Netto:</span><span className={netto >= 0 ? "text-primary" : "text-destructive"}>{netto.toLocaleString("sv-SE")} kr</span></div>
+                          {nettoPerM3 !== null && (
+                            <div className="flex justify-between font-semibold"><span className="text-muted-foreground">Netto per m³sk:</span><span className={nettoPerM3 >= 0 ? "text-primary" : "text-destructive"}>{Math.round(nettoPerM3).toLocaleString("sv-SE")} kr/m³sk</span></div>
+                          )}
                         </div>
                       );
                     })()}
-
-                    {newAct.is_completed && (
-                      <label className="flex items-center gap-2 cursor-pointer pt-1">
-                        <input type="checkbox" checked={newAct.affects_forest_plan} onChange={e => setNewAct({ ...newAct, affects_forest_plan: e.target.checked })} className="rounded border-input h-4 w-4 accent-primary" />
-                        <span className="text-xs font-medium text-foreground">Uppdatera skogsbruksplan automatiskt</span>
-                      </label>
-                    )}
                   </div>
                 )}
-
-                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3">
-                  <p className="text-xs font-semibold text-primary uppercase tracking-wide">Ekonomi</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label>Beräknad intäkt (kr)</Label>
-                      <Input type="number" placeholder="0" value={newAct.estimated_income} onChange={e => setNewAct({ ...newAct, estimated_income: e.target.value })} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Kostnad per m³sk (kr)</Label>
-                      <Input type="number" placeholder="0" value={newAct.cost_per_m3sk ?? ""} onChange={e => {
-                        const costPerM3 = e.target.value;
-                        const vol = Number(newAct.harvested_volume_m3sk) || 0;
-                        const totalCost = vol > 0 && Number(costPerM3) > 0 ? Math.round(vol * Number(costPerM3)) : Number(costPerM3) > 0 ? Number(costPerM3) : 0;
-                        setNewAct({ ...newAct, cost_per_m3sk: costPerM3, estimated_cost: String(totalCost) });
-                      }} />
-                    </div>
-                  </div>
-                  {(Number(newAct.estimated_income) > 0 || Number(newAct.estimated_cost) > 0) && (() => {
-                    const income = Number(newAct.estimated_income) || 0;
-                    const cost = Number(newAct.estimated_cost) || 0;
-                    const vol = Number(newAct.harvested_volume_m3sk) || 0;
-                    const netto = income - cost;
-                    const nettoPerM3 = vol > 0 ? netto / vol : null;
-                    return (
-                      <div className="rounded-md bg-muted/50 p-2 text-xs space-y-0.5">
-                        <div className="flex justify-between"><span className="text-muted-foreground">Intäkt:</span><span className="text-foreground">{income.toLocaleString("sv-SE")} kr</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">Kostnad ({Number(newAct.cost_per_m3sk) || 0} kr/m³sk × {vol} m³sk):</span><span className="text-destructive">−{cost.toLocaleString("sv-SE")} kr</span></div>
-                        <div className="flex justify-between border-t border-border pt-0.5 font-semibold"><span className="text-muted-foreground">Netto:</span><span className={netto >= 0 ? "text-primary" : "text-destructive"}>{netto.toLocaleString("sv-SE")} kr</span></div>
-                        {nettoPerM3 !== null && (
-                          <div className="flex justify-between font-semibold"><span className="text-muted-foreground">Netto per m³sk:</span><span className={nettoPerM3 >= 0 ? "text-primary" : "text-destructive"}>{Math.round(nettoPerM3).toLocaleString("sv-SE")} kr/m³sk</span></div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
 
                 {/* Bidrag / Stöd */}
                 <div className="rounded-lg border border-border p-3 space-y-3">
@@ -1089,9 +1050,9 @@ export default function Skogsbruksplan() {
                       </div>
                       {(Number(newAct.estimated_cost) > 0 || Number(newAct.subsidy_amount) > 0) && (
                         <div className="rounded-md bg-muted/50 p-2 text-xs space-y-0.5">
-                          <div className="flex justify-between"><span className="text-muted-foreground">Kostnad:</span><span className="text-foreground">{(Number(newAct.estimated_cost) || 0).toLocaleString("sv-SE")} kr</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">Kostnad:</span><span className="text-foreground">{(Number(newAct.estimated_cost) || Number(newAct.total_cost) || 0).toLocaleString("sv-SE")} kr</span></div>
                           <div className="flex justify-between"><span className="text-muted-foreground">Bidrag:</span><span className="text-primary">−{(Number(newAct.subsidy_amount) || 0).toLocaleString("sv-SE")} kr</span></div>
-                          <div className="flex justify-between border-t border-border pt-0.5 font-semibold"><span className="text-muted-foreground">Nettokostnad:</span><span className="text-foreground">{((Number(newAct.estimated_cost) || 0) - (Number(newAct.subsidy_amount) || 0)).toLocaleString("sv-SE")} kr</span></div>
+                          <div className="flex justify-between border-t border-border pt-0.5 font-semibold"><span className="text-muted-foreground">Nettokostnad:</span><span className="text-foreground">{((Number(newAct.estimated_cost) || Number(newAct.total_cost) || 0) - (Number(newAct.subsidy_amount) || 0)).toLocaleString("sv-SE")} kr</span></div>
                         </div>
                       )}
                     </div>
