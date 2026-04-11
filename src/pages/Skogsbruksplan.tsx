@@ -777,7 +777,7 @@ export default function Skogsbruksplan() {
                           <Select value={newAct.subsidy_type} onValueChange={v => setNewAct({ ...newAct, subsidy_type: v })}>
                             <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Välj..." /></SelectTrigger>
                             <SelectContent>
-                              {["Skogsstyrelsen", "LONA", "NOKÅS", "Klimatstöd", "EU-stöd", "Annat"].map(t => (
+                              {["Skogsstyrelsen", "LONA", "NOKÅS", "Klimatstöd", "EU-stöd", "Allmänningsbidrag", "Annat"].map(t => (
                                 <SelectItem key={t} value={t}>{t}</SelectItem>
                               ))}
                             </SelectContent>
