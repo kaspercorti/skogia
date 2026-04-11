@@ -1,4 +1,4 @@
-import { Wallet, TrendingUp, TreePine, Receipt, Calculator, CalendarClock, Zap, ArrowRight, ChevronRight, AlertTriangle, Clock, TrendingDown } from "lucide-react";
+import { Wallet, TrendingUp, TreePine, Receipt, Calculator, CalendarClock, Zap, ArrowRight, ChevronRight, AlertTriangle, Clock, TrendingDown, Leaf } from "lucide-react";
 import StatCard from "@/components/dashboard/StatCard";
 import CashFlowChart from "@/components/dashboard/CashFlowChart";
 import ForestOverview from "@/components/dashboard/ForestOverview";
@@ -10,6 +10,7 @@ import {
   fmt, calcSaldo, calcResultat, calcTotalArea, calcOpenInvoices, calcOverdueInvoices, calcUpcomingIncome, calcEstimatedTax,
 } from "@/hooks/useSkogskollData";
 import { useLossCarryForwards, applyLossCarryForwards } from "@/hooks/useLossCarryForwards";
+import { useCarbonCredits } from "@/hooks/useCarbonCredits";
 
 export default function Index() {
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ export default function Index() {
   const { data: bankAccounts = [] } = useBankAccounts();
   const { data: taxAccounts = [] } = useTaxAccounts();
   const { data: lossCarryForwards = [] } = useLossCarryForwards();
+  const carbon = useCarbonCredits(stands);
 
   const year = new Date().getFullYear();
   const saldo = bankAccounts.reduce((s, a) => s + a.current_balance, 0);
@@ -81,6 +83,9 @@ export default function Index() {
           <StatCard icon={CalendarClock} title="Kommande intäkt" value={fmt(upcomingIncome)} change={`${activities.filter(a => a.status === "planned").length} planerade`} changeType="positive" delay={250} />
           {totalRemainingLoss > 0 && (
             <StatCard icon={TrendingDown} title="Underskott" value={fmt(totalRemainingLoss)} change={lossResult.lossUsed > 0 ? `${fmt(lossResult.lossUsed)} används ${year}` : "Kvar att använda"} changeType="neutral" delay={300} />
+          )}
+          {carbon.totalAnnualCO2 > 0 && (
+            <StatCard icon={Leaf} title="CO₂-inlagring" value={`${carbon.totalAnnualCO2.toLocaleString("sv-SE")} ton/år`} change={`Potentiellt ${carbon.totalAnnualValue.toLocaleString("sv-SE")} kr/år`} changeType="positive" delay={350} />
           )}
         </div>
 
