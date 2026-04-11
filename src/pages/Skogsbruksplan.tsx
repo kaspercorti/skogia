@@ -299,11 +299,10 @@ export default function Skogsbruksplan() {
   };
 
   const handleDeleteActivity = async (activityId: string) => {
-    // Find the activity to check if we need to restore stand volume
     const activity = activities.find(a => a.id === activityId);
     
-    if (activity && activity.is_completed && activity.plan_updated && activity.stand_id && activity.harvested_volume_m3sk > 0) {
-      // Restore stand volume before deleting
+    // Restore stand volume if the activity had reduced it
+    if (activity && activity.is_completed && activity.affects_forest_plan && activity.stand_id && activity.harvested_volume_m3sk > 0) {
       const stand = stands.find(s => s.id === activity.stand_id);
       if (stand) {
         const restoredVol = (stand.volume_m3sk ?? 0) + activity.harvested_volume_m3sk;
@@ -323,18 +322,56 @@ export default function Skogsbruksplan() {
     const { error } = await supabase.from("forest_activities").delete().eq("id", activityId);
     if (error) { toast.error("Kunde inte ta bort: " + error.message); return; }
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
+    queryClient.invalidateQueries({ queryKey: ["stands"] });
     toast.success("Aktivitet borttagen");
   };
 
   const handleToggleActivityStatus = async (activity: typeof activities[0]) => {
     const nowCompleted = !activity.is_completed;
+    const stand = activity.stand_id ? stands.find(s => s.id === activity.stand_id) : null;
+    const harvestedVol = activity.harvested_volume_m3sk || 0;
+    const shouldUpdateVolume = activity.affects_forest_plan && stand && harvestedVol > 0;
+
+    // Update activity status
     const { error } = await supabase.from("forest_activities").update({
       is_completed: nowCompleted,
       status: nowCompleted ? "completed" : "planned",
       completed_date: nowCompleted ? new Date().toISOString().slice(0, 10) : null,
+      plan_updated: shouldUpdateVolume ? nowCompleted : false,
     }).eq("id", activity.id);
     if (error) { toast.error("Kunde inte uppdatera: " + error.message); return; }
+
+    // Update stand volume if applicable
+    if (shouldUpdateVolume && stand) {
+      const currentVol = stand.volume_m3sk ?? 0;
+      const newVol = nowCompleted ? currentVol - harvestedVol : currentVol + harvestedVol;
+
+      if (nowCompleted && harvestedVol > currentVol) {
+        toast.error(`Uttaget (${harvestedVol} m³sk) överstiger tillgängligt virkesförråd (${currentVol} m³sk)`);
+        // Revert activity status
+        await supabase.from("forest_activities").update({
+          is_completed: !nowCompleted,
+          status: !nowCompleted ? "completed" : "planned",
+          completed_date: !nowCompleted ? activity.completed_date : null,
+          plan_updated: false,
+        }).eq("id", activity.id);
+        return;
+      }
+
+      const { error: standErr } = await supabase.from("stands").update({
+        volume_m3sk: Math.max(0, newVol),
+        volume_per_ha: stand.area_ha > 0 ? Math.round((Math.max(0, newVol) / stand.area_ha) * 10) / 10 : null,
+      }).eq("id", stand.id);
+
+      if (standErr) {
+        toast.error("Status ändrad men kunde inte uppdatera beståndsvolym: " + standErr.message);
+      } else {
+        toast.success(`Virkesförråd uppdaterat: ${fmt(currentVol)} → ${fmt(Math.max(0, newVol))} m³sk`);
+      }
+    }
+
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
+    queryClient.invalidateQueries({ queryKey: ["stands"] });
     toast.success(nowCompleted ? "Aktivitet markerad som genomförd" : "Aktivitet markerad som planerad");
   };
 
