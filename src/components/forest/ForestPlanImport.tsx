@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { Upload, FileText, Loader2, Check, AlertTriangle, X, Edit2, ChevronDown, ChevronUp } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Upload, FileText, Loader2, Check, AlertTriangle, X, Edit2, ChevronDown, ChevronUp, Plus, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
