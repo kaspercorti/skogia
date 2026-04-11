@@ -500,9 +500,32 @@ export default function Skogsbruksplan() {
             const propArea = propStands.reduce((s, st) => s + st.area_ha, 0);
             return (
               <div key={p.id} className="rounded-xl border border-border bg-card p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <MapPin className="h-4 w-4 text-primary" />
-                  <p className="text-sm font-semibold text-card-foreground">{p.name}</p>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    <p className="text-sm font-semibold text-card-foreground">{p.name}</p>
+                  </div>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Ta bort fastighet</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Är du säker på att du vill ta bort <strong>{p.name}</strong>? Alla bestånd och aktiviteter kopplade till fastigheten tas också bort. Detta går inte att ångra.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDeleteProperty(p.id, p.name)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Ta bort
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
                 <p className="text-xs text-muted-foreground">{p.municipality || "—"}</p>
                 <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
