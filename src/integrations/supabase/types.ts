@@ -225,6 +225,54 @@ export type Database = {
           },
         ]
       }
+      forest_plan_imports: {
+        Row: {
+          approved_at: string | null
+          confidence_score: number | null
+          created_at: string
+          extracted_data: Json | null
+          extracted_stands_count: number | null
+          file_name: string
+          file_url: string | null
+          id: string
+          notes: string | null
+          status: string
+          updated_at: string
+          uploaded_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          extracted_data?: Json | null
+          extracted_stands_count?: number | null
+          file_name: string
+          file_url?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          uploaded_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          extracted_data?: Json | null
+          extracted_stands_count?: number | null
+          file_name?: string
+          file_url?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          uploaded_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       integrations: {
         Row: {
           created_at: string

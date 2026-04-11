@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { TreePine, ChevronRight, ArrowLeft, Calendar, Trees, Plus, MapPin } from "lucide-react";
+import ForestPlanImport from "@/components/forest/ForestPlanImport";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -230,6 +231,8 @@ export default function Skogsbruksplan() {
           <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">Skogsbruksplan</h1>
         </div>
         <div className="flex flex-wrap gap-2">
+          {/* Import forest plan */}
+          <ForestPlanImport properties={properties} />
           {/* Add Property Dialog */}
           <Dialog open={propDialogOpen} onOpenChange={setPropDialogOpen}>
             <DialogTrigger asChild>
