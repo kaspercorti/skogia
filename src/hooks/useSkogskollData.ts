@@ -21,6 +21,13 @@ export type Stand = {
   site_index: string | null;
   estimated_value: number | null;
   growth_rate_percent: number | null;
+  huggningsklass: string | null;
+  mean_diameter_cm: number | null;
+  mean_height_m: number | null;
+  goal_class: string | null;
+  basal_area_m2: number | null;
+  annual_growth_m3sk: number | null;
+  description: string | null;
   planned_action: string | null;
   planned_year: number | null;
   notes: string | null;
