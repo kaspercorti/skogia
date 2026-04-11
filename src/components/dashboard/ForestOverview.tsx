@@ -15,7 +15,11 @@ export default function ForestOverview() {
       <h3 className="font-display text-lg text-card-foreground mb-4">Skogsinnehav</h3>
       <div className="space-y-3">
         {stands.length === 0 && <p className="text-sm text-muted-foreground">Inga bestånd.</p>}
-        {stands.map((stand) => {
+        {[...stands].sort((a, b) => {
+          const numA = parseInt(a.name.replace(/\D/g, '')) || 0;
+          const numB = parseInt(b.name.replace(/\D/g, '')) || 0;
+          return numA - numB;
+        }).map((stand) => {
           const Icon = iconMap[stand.planned_action || ""] || TreePine;
           return (
             <div key={stand.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer">
