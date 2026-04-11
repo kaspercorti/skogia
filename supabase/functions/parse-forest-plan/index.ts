@@ -268,8 +268,8 @@ function enrichParsedResult(rawParsed: Record<string, unknown>, structuredText: 
   };
 }
 
-async function callExtractionAI(apiKey: string, structuredText: string, base64Pdf: string) {
-  const hasStructuredText = structuredText.trim().length >= MIN_STRUCTURED_TEXT_LENGTH;
+async function callExtractionAI(apiKey: string, base64Pdf: string) {
+  
 
   return await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
