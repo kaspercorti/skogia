@@ -880,15 +880,25 @@ export default function Skogsbruksplan() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Beräknad intäkt (kr)</Label>
-                    <Input type="number" placeholder="0" value={newAct.estimated_income} onChange={e => setNewAct({ ...newAct, estimated_income: e.target.value })} />
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3">
+                  <p className="text-xs font-semibold text-primary uppercase tracking-wide">Ekonomi</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Beräknad intäkt (kr)</Label>
+                      <Input type="number" placeholder="0" value={newAct.estimated_income} onChange={e => setNewAct({ ...newAct, estimated_income: e.target.value })} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Beräknad kostnad (kr)</Label>
+                      <Input type="number" placeholder="0" value={newAct.estimated_cost} onChange={e => setNewAct({ ...newAct, estimated_cost: e.target.value })} />
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Beräknad kostnad (kr)</Label>
-                    <Input type="number" placeholder="0" value={newAct.estimated_cost} onChange={e => setNewAct({ ...newAct, estimated_cost: e.target.value })} />
-                  </div>
+                  {(Number(newAct.estimated_income) > 0 || Number(newAct.estimated_cost) > 0) && (
+                    <div className="rounded-md bg-muted/50 p-2 text-xs space-y-0.5">
+                      <div className="flex justify-between"><span className="text-muted-foreground">Intäkt:</span><span className="text-foreground">{(Number(newAct.estimated_income) || 0).toLocaleString("sv-SE")} kr</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Kostnad:</span><span className="text-destructive">−{(Number(newAct.estimated_cost) || 0).toLocaleString("sv-SE")} kr</span></div>
+                      <div className="flex justify-between border-t border-border pt-0.5 font-semibold"><span className="text-muted-foreground">Netto:</span><span className={((Number(newAct.estimated_income) || 0) - (Number(newAct.estimated_cost) || 0)) >= 0 ? "text-primary" : "text-destructive"}>{((Number(newAct.estimated_income) || 0) - (Number(newAct.estimated_cost) || 0)).toLocaleString("sv-SE")} kr</span></div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Bidrag / Stöd */}
