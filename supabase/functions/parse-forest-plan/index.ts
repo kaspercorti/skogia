@@ -21,6 +21,13 @@ type ExtractedStand = {
   age: number | null;
   volume_m3sk: number | null;
   site_index: string | null;
+  huggningsklass: string | null;
+  mean_diameter_cm: number | null;
+  mean_height_m: number | null;
+  goal_class: string | null;
+  basal_area_m2: number | null;
+  annual_growth_m3sk: number | null;
+  description: string | null;
   planned_action: string | null;
   planned_year: number | null;
   notes: string | null;
@@ -94,6 +101,13 @@ function normalizeStand(raw: Record<string, unknown>): ExtractedStand {
     age: toIntegerOrNull(raw.age),
     volume_m3sk: parseNumber(raw.volume_m3sk),
     site_index: toStringOrNull(raw.site_index),
+    huggningsklass: toStringOrNull(raw.huggningsklass),
+    mean_diameter_cm: parseNumber(raw.mean_diameter_cm),
+    mean_height_m: parseNumber(raw.mean_height_m),
+    goal_class: toStringOrNull(raw.goal_class),
+    basal_area_m2: parseNumber(raw.basal_area_m2),
+    annual_growth_m3sk: parseNumber(raw.annual_growth_m3sk),
+    description: toStringOrNull(raw.description),
     planned_action: toStringOrNull(raw.planned_action),
     planned_year: toIntegerOrNull(raw.planned_year),
     notes: toStringOrNull(raw.notes),
