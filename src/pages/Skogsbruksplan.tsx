@@ -27,6 +27,7 @@ export default function Skogsbruksplan() {
   const { data: activities = [] } = useForestActivities();
   const { data: transactions = [] } = useTransactions();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const importTriggerRef = useRef<(() => void) | null>(null);
 
   // Dialog state
   const [propDialogOpen, setPropDialogOpen] = useState(false);
