@@ -161,8 +161,8 @@ export default function Skatteplanering() {
 
   const currentSim = useMemo(() => buildScenario(
     scenarioName, scenarioYear, selectedIds, activities, currentResultat,
-    uttagPercent, extraIncome, extraExpenses,
-  ), [scenarioName, scenarioYear, selectedIds, activities, currentResultat, uttagPercent, extraIncome, extraExpenses]);
+    uttagPercent, extraIncome, extraExpenses, lossCarryForwards,
+  ), [scenarioName, scenarioYear, selectedIds, activities, currentResultat, uttagPercent, extraIncome, extraExpenses, lossCarryForwards]);
 
   const addScenario = useCallback(() => {
     setSimScenarios(prev => [...prev, { ...currentSim, id: makeScenarioId() }]);
