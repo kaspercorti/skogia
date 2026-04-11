@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import {
   Calculator, Zap, ArrowRight, TrendingDown, Lightbulb,
   Sliders as SliderIcon, Check, Trophy, Save, Trash2, ChevronDown, ChevronUp,
+  AlertTriangle,
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ import {
   fmt, calcResultat,
   type ForestActivity, type TaxScenario,
 } from "@/hooks/useSkogskollData";
+import { useLossCarryForwards, applyLossCarryForwards, useSaveLossCarryForward } from "@/hooks/useLossCarryForwards";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
