@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { TreePine, ChevronRight, ArrowLeft, Calendar, Trees, Plus, MapPin } from "lucide-react";
+import ForestPlanImport from "@/components/forest/ForestPlanImport";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
