@@ -435,15 +435,8 @@ serve(async (req) => {
 
     const pdfBuffer = await pdfResp.arrayBuffer();
 
-    let structuredText = "";
-    try {
-      structuredText = await extractStructuredPdfText(pdfBuffer);
-    } catch (error) {
-      console.error("Structured PDF extraction failed:", error);
-    }
-
     const base64Pdf = bufferToBase64(pdfBuffer);
-    const aiResponse = await callExtractionAI(LOVABLE_API_KEY, structuredText, base64Pdf);
+    const aiResponse = await callExtractionAI(LOVABLE_API_KEY, base64Pdf);
 
     if (!aiResponse.ok) {
       const status = aiResponse.status;
@@ -472,7 +465,7 @@ serve(async (req) => {
       throw new Error("No tool call in AI response");
     }
 
-    const parsed = enrichParsedResult(JSON.parse(toolCall.function.arguments), structuredText);
+    const parsed = enrichParsedResult(JSON.parse(toolCall.function.arguments), "");
 
     const { error: updateError } = await (adminClient.from("forest_plan_imports") as any)
       .update({
