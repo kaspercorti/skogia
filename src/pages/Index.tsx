@@ -1,4 +1,4 @@
-import { Wallet, TrendingUp, TreePine, Receipt, Calculator, CalendarClock, Zap, ArrowRight, ChevronRight, AlertTriangle, Clock } from "lucide-react";
+import { Wallet, TrendingUp, TreePine, Receipt, Calculator, CalendarClock, Zap, ArrowRight, ChevronRight, AlertTriangle, Clock, TrendingDown } from "lucide-react";
 import StatCard from "@/components/dashboard/StatCard";
 import CashFlowChart from "@/components/dashboard/CashFlowChart";
 import ForestOverview from "@/components/dashboard/ForestOverview";
@@ -9,6 +9,7 @@ import {
   useBankAccounts, useTaxAccounts,
   fmt, calcSaldo, calcResultat, calcTotalArea, calcOpenInvoices, calcOverdueInvoices, calcUpcomingIncome, calcEstimatedTax,
 } from "@/hooks/useSkogskollData";
+import { useLossCarryForwards, applyLossCarryForwards } from "@/hooks/useLossCarryForwards";
 
 export default function Index() {
   const navigate = useNavigate();
