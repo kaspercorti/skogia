@@ -408,7 +408,7 @@ export default function Skogsbruksplan() {
         </div>
         <div className="flex flex-wrap gap-2">
           {/* Import forest plan */}
-          <ForestPlanImport properties={properties} />
+          <ForestPlanImport properties={properties} triggerRef={importTriggerRef} />
           {/* Add Property Dialog */}
           <Dialog open={propDialogOpen} onOpenChange={setPropDialogOpen}>
             <DialogTrigger asChild>
@@ -436,6 +436,13 @@ export default function Skogsbruksplan() {
                   </div>
                 </div>
                 <Button onClick={handleAddProperty} className="mt-2 w-full">Spara fastighet</Button>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+                  <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">eller</span></div>
+                </div>
+                <Button variant="outline" className="w-full gap-2" onClick={() => { setPropDialogOpen(false); setTimeout(() => importTriggerRef.current?.(), 150); }}>
+                  <Upload className="h-4 w-4" /> Importera skogsbruksplan
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
