@@ -8,10 +8,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MAX_EXTRACTED_TEXT_LENGTH = 120_000;
-const MIN_STRUCTURED_TEXT_LENGTH = 250;
-const Y_TOLERANCE = 3;
-const COLUMN_GAP_THRESHOLD = 10;
 const SECTION_CONTEXT_RADIUS = 16;
 
 type ExtractedStand = {
@@ -127,73 +123,6 @@ function bufferToBase64(buffer: ArrayBuffer) {
   return btoa(parts.join(""));
 }
 
-async function extractTextWithStructure(page: { getTextContent: () => Promise<{ items: unknown[] }> }) {
-  const content = await page.getTextContent();
-  const lineMap = new Map<number, Array<{ str: string; x: number; width: number }>>();
-
-  for (const rawItem of content.items as PdfTextItem[]) {
-    const str = typeof rawItem.str === "string" ? rawItem.str.replace(/\s+/g, " ").trim() : "";
-    if (!str) continue;
-
-    const x = Array.isArray(rawItem.transform) ? rawItem.transform[4] ?? 0 : 0;
-    const yRaw = Array.isArray(rawItem.transform) ? rawItem.transform[5] ?? 0 : 0;
-    const y = Math.round(yRaw / Y_TOLERANCE) * Y_TOLERANCE;
-
-    if (!lineMap.has(y)) lineMap.set(y, []);
-    lineMap.get(y)?.push({
-      str,
-      x,
-      width: typeof rawItem.width === "number" ? rawItem.width : str.length * 5,
-    });
-  }
-
-  return Array.from(lineMap.entries())
-    .sort((a, b) => b[0] - a[0])
-    .map(([, items]) => {
-      items.sort((a, b) => a.x - b.x);
-      let line = "";
-
-      for (let index = 0; index < items.length; index += 1) {
-        const item = items[index];
-        if (index > 0) {
-          const previous = items[index - 1];
-          const gap = item.x - (previous.x + previous.width);
-          line += gap > COLUMN_GAP_THRESHOLD ? "  " : " ";
-        }
-        line += item.str;
-      }
-
-      return line.replace(/\s{3,}/g, "  ").trim();
-    })
-    .filter(Boolean)
-    .join("\n");
-}
-
-async function extractStructuredPdfText(pdfBuffer: ArrayBuffer) {
-  const pdf = await pdfjsLib.getDocument({
-    data: new Uint8Array(pdfBuffer),
-    useWorkerFetch: false,
-    isEvalSupported: false,
-    disableFontFace: true,
-    useSystemFonts: true,
-  }).promise;
-
-  const pages: string[] = [];
-  try {
-    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-      const page = await pdf.getPage(pageNumber);
-      const pageText = await extractTextWithStructure(page);
-      if (pageText.trim()) {
-        pages.push(`--- Sida ${pageNumber} ---\n${pageText}`);
-      }
-    }
-  } finally {
-    pdf.cleanup();
-    pdf.destroy();
-  }
-
-  return pages.join("\n\n").slice(0, MAX_EXTRACTED_TEXT_LENGTH);
-}
 
 function buildStandMatcher(name: string) {
   const rawName = name.trim();
