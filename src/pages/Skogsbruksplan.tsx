@@ -807,3 +807,19 @@ function DetailCard({ label, value, small }: { label: string; value: string; sma
     </div>
   );
 }
+
+function CollapsibleSection({ title, icon, children, defaultOpen, className }: { title: string; icon: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean; className?: string }) {
+  const [open, setOpen] = useState(defaultOpen ?? false);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className={cn("mt-6", className)}>
+      <CollapsibleTrigger className="flex items-center gap-2 w-full rounded-xl border border-border bg-card px-4 py-3 hover:bg-muted/50 transition-colors">
+        {icon}
+        <span className="font-display text-lg font-bold text-foreground">{title}</span>
+        <ChevronDown className={cn("h-4 w-4 text-muted-foreground ml-auto transition-transform", open && "rotate-180")} />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-2">
+        {children}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
