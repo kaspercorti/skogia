@@ -86,6 +86,7 @@ export default function ForestPlanImport({ properties, triggerRef }: ForestPlanI
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const [showNewPropForm, setShowNewPropForm] = useState(false);
   const [inlineProp, setInlineProp] = useState({ name: "", municipality: "", total_area_ha: "", productive_forest_ha: "" });
 
