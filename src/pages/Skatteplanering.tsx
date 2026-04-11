@@ -262,18 +262,25 @@ export default function Skatteplanering() {
       {/* ═══ Section 1: Nuvarande skattesituation ═══ */}
       <section>
         <h2 className="font-display text-lg font-semibold text-foreground mb-3">Nuvarande skattesituation {year}</h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground mb-1">Resultat</p>
             <p className="text-lg font-bold tabular-nums text-card-foreground">{fmtK(currentResultat)}</p>
           </div>
+          {lossResult.lossUsed > 0 && (
+            <div className="rounded-xl border border-accent/30 bg-accent/5 p-4">
+              <p className="text-xs text-muted-foreground mb-1">Underskottsavdrag</p>
+              <p className="text-lg font-bold tabular-nums text-accent">-{fmtK(lossResult.lossUsed)}</p>
+              <p className="text-xs text-muted-foreground">Beskattningsbart: {fmtK(lossResult.taxableResultat)}</p>
+            </div>
+          )}
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground mb-1">Beräknad skatt</p>
             <p className="text-lg font-bold tabular-nums text-destructive">{fmtK(currentTax)}</p>
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground mb-1">Effektiv skattesats</p>
-            <p className="text-lg font-bold tabular-nums text-card-foreground">{calcEffectiveRate(currentResultat, currentTax)}%</p>
+            <p className="text-lg font-bold tabular-nums text-card-foreground">{calcEffectiveRate(lossResult.taxableResultat, currentTax)}%</p>
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground mb-1">Netto efter skatt</p>
@@ -286,6 +293,83 @@ export default function Skatteplanering() {
           </div>
         </div>
       </section>
+
+      {/* ═══ Section 1b: Underskott ═══ */}
+      {(lossCarryForwards.length > 0 || currentYearCreatesLoss) && (
+        <section className="rounded-xl border border-accent/20 bg-card p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-accent" />
+            <h2 className="font-display text-lg font-semibold text-foreground">Underskottsavdrag</h2>
+          </div>
+
+          {currentYearCreatesLoss && (
+            <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+              <p className="text-sm text-foreground">
+                Årets resultat är <span className="font-semibold text-destructive">{fmtK(currentResultat)}</span>.
+                Detta ger ett underskott på <span className="font-semibold">{fmtK(currentYearLossAmount)}</span> som kan användas kommande år.
+              </p>
+              {canSaveCurrentLoss && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-2 gap-1.5"
+                  onClick={() => saveLoss.mutate({ year, amount: currentYearLossAmount })}
+                  disabled={saveLoss.isPending}
+                >
+                  <Save className="h-3.5 w-3.5" /> Spara underskott för {year}
+                </Button>
+              )}
+              {existingLossForYear && (
+                <p className="text-xs text-muted-foreground mt-2">Underskott för {year} redan sparat ({fmtK(existingLossForYear.original_amount)})</p>
+              )}
+            </div>
+          )}
+
+          {lossCarryForwards.length > 0 && (
+            <div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                <div className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Ackumulerat underskott</p>
+                  <p className="text-lg font-bold tabular-nums text-card-foreground">
+                    {fmtK(lossCarryForwards.reduce((s, l) => s + l.original_amount, 0))}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Används {year}</p>
+                  <p className="text-lg font-bold tabular-nums text-accent">{fmtK(lossResult.lossUsed)}</p>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Kvar att använda</p>
+                  <p className="text-lg font-bold tabular-nums text-card-foreground">{fmtK(lossResult.remainingLosses)}</p>
+                </div>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>År</TableHead>
+                    <TableHead className="text-right">Ursprungligt</TableHead>
+                    <TableHead className="text-right">Kvar</TableHead>
+                    <TableHead className="text-right">Används {year}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {lossCarryForwards.map(l => {
+                    const detail = lossResult.lossDetails.find(d => d.year === l.year);
+                    return (
+                      <TableRow key={l.id}>
+                        <TableCell className="font-medium">{l.year}</TableCell>
+                        <TableCell className="text-right tabular-nums">{fmtK(l.original_amount)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{fmtK(l.remaining_amount)}</TableCell>
+                        <TableCell className="text-right tabular-nums text-accent">{detail?.used ? fmtK(detail.used) : "–"}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* ═══ Section 2: Rekommendation banner ═══ */}
       {bestTax && bestNet && (
