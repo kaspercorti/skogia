@@ -35,7 +35,16 @@ export default function Skogsbruksplan() {
   // New property form
   const [newProp, setNewProp] = useState({ name: "", municipality: "", total_area_ha: "", productive_forest_ha: "" });
   // New stand form
-  const [newStand, setNewStand] = useState({ property_id: "", name: "", tree_species: "", area_ha: "", age: "", volume_m3sk: "", estimated_value: "", growth_rate_percent: "", planned_action: "", planned_year: "", notes: "" });
+  const emptyStand = {
+    property_id: "", name: "", tree_species: "", area_ha: "", age: "", volume_m3sk: "", volume_per_ha: "",
+    estimated_value: "", growth_rate_percent: "", planned_action: "", planned_year: "", notes: "",
+    huggningsklass: "", site_index: "", mean_diameter_cm: "", mean_height_m: "", goal_class: "",
+    basal_area_m2: "", annual_growth_m3sk: "", description: "", parcel_number: "", layer: "",
+    vegetation_type: "", moisture_class: "", terrain_type: "", driving_conditions: "", slope_info: "",
+    gyl_values: "", alternative_action: "", timing_code: "", removal_percent: "", removal_volume_m3sk: "",
+    production_goal: "", general_comment: "", action_comment: "", special_values: "",
+  };
+  const [newStand, setNewStand] = useState(emptyStand);
   // New activity form
   const [newAct, setNewAct] = useState({ property_id: "", stand_id: "", type: "", planned_date: "", estimated_income: "", estimated_cost: "", notes: "" });
 
@@ -83,23 +92,50 @@ export default function Skogsbruksplan() {
 
   const handleAddStand = async () => {
     if (!newStand.name || !newStand.property_id || !user) return;
+    const num = (v: string) => v ? Number(v) : null;
+    const txt = (v: string) => v || null;
     const { error } = await supabase.from("stands").insert({
       property_id: newStand.property_id,
       name: newStand.name,
-      tree_species: newStand.tree_species || null,
+      tree_species: txt(newStand.tree_species),
       area_ha: Number(newStand.area_ha) || 0,
-      age: newStand.age ? Number(newStand.age) : null,
-      volume_m3sk: newStand.volume_m3sk ? Number(newStand.volume_m3sk) : null,
-      estimated_value: newStand.estimated_value ? Number(newStand.estimated_value) : null,
-      growth_rate_percent: newStand.growth_rate_percent ? Number(newStand.growth_rate_percent) : null,
-      planned_action: newStand.planned_action || null,
-      planned_year: newStand.planned_year ? Number(newStand.planned_year) : null,
-      notes: newStand.notes || null,
+      age: num(newStand.age) as any,
+      volume_m3sk: num(newStand.volume_m3sk),
+      volume_per_ha: num(newStand.volume_per_ha),
+      estimated_value: num(newStand.estimated_value),
+      growth_rate_percent: num(newStand.growth_rate_percent),
+      planned_action: txt(newStand.planned_action),
+      planned_year: num(newStand.planned_year) as any,
+      notes: txt(newStand.notes),
+      huggningsklass: txt(newStand.huggningsklass),
+      site_index: txt(newStand.site_index),
+      mean_diameter_cm: num(newStand.mean_diameter_cm),
+      mean_height_m: num(newStand.mean_height_m),
+      goal_class: txt(newStand.goal_class),
+      basal_area_m2: num(newStand.basal_area_m2),
+      annual_growth_m3sk: num(newStand.annual_growth_m3sk),
+      description: txt(newStand.description),
+      parcel_number: txt(newStand.parcel_number),
+      layer: txt(newStand.layer),
+      vegetation_type: txt(newStand.vegetation_type),
+      moisture_class: txt(newStand.moisture_class),
+      terrain_type: txt(newStand.terrain_type),
+      driving_conditions: txt(newStand.driving_conditions),
+      slope_info: txt(newStand.slope_info),
+      gyl_values: txt(newStand.gyl_values),
+      alternative_action: txt(newStand.alternative_action),
+      timing_code: txt(newStand.timing_code),
+      removal_percent: num(newStand.removal_percent),
+      removal_volume_m3sk: num(newStand.removal_volume_m3sk),
+      production_goal: txt(newStand.production_goal),
+      general_comment: txt(newStand.general_comment),
+      action_comment: txt(newStand.action_comment),
+      special_values: txt(newStand.special_values),
     });
     if (error) { toast.error("Kunde inte spara: " + error.message); return; }
     queryClient.invalidateQueries({ queryKey: ["stands"] });
     toast.success("Bestånd skapat");
-    setNewStand({ property_id: "", name: "", tree_species: "", area_ha: "", age: "", volume_m3sk: "", estimated_value: "", growth_rate_percent: "", planned_action: "", planned_year: "", notes: "" });
+    setNewStand(emptyStand);
     setStandDialogOpen(false);
   };
 
@@ -351,9 +387,11 @@ export default function Skogsbruksplan() {
             <DialogTrigger asChild>
               <Button variant="outline" className="gap-2"><Trees className="h-4 w-4" /> Lägg till bestånd</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+            <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Nytt bestånd</DialogTitle></DialogHeader>
               <div className="grid gap-4 py-2">
+                {/* Grunddata */}
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Grunddata</p>
                 <div className="space-y-1.5">
                   <Label>Fastighet *</Label>
                   <Select value={newStand.property_id} onValueChange={v => setNewStand({ ...newStand, property_id: v })}>
@@ -363,28 +401,93 @@ export default function Skogsbruksplan() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Namn *</Label>
-                  <Input placeholder="T.ex. Avd 5 – Tallbacken" value={newStand.name} onChange={e => setNewStand({ ...newStand, name: e.target.value })} />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Namn / Avd *</Label>
+                    <Input placeholder="T.ex. Avd 5 – Tallbacken" value={newStand.name} onChange={e => setNewStand({ ...newStand, name: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Skifte</Label>
+                    <Input placeholder="T.ex. 1" value={newStand.parcel_number} onChange={e => setNewStand({ ...newStand, parcel_number: e.target.value })} />
+                  </div>
                 </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Areal (ha)</Label>
+                    <Input type="number" step="0.1" placeholder="0" value={newStand.area_ha} onChange={e => setNewStand({ ...newStand, area_ha: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Ålder (år)</Label>
+                    <Input type="number" placeholder="0" value={newStand.age} onChange={e => setNewStand({ ...newStand, age: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Skikt</Label>
+                    <Input placeholder="T.ex. E, Ö" value={newStand.layer} onChange={e => setNewStand({ ...newStand, layer: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Hkl</Label>
+                    <Select value={newStand.huggningsklass} onValueChange={v => setNewStand({ ...newStand, huggningsklass: v })}>
+                      <SelectTrigger><SelectValue placeholder="Välj..." /></SelectTrigger>
+                      <SelectContent>
+                        {["K1","K2","R1","R2","G1","G2","S1","S2","S3","E1","E2","E3"].map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>SI / Bonitet</Label>
+                    <Input placeholder="T.ex. T24, G28" value={newStand.site_index} onChange={e => setNewStand({ ...newStand, site_index: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Målklass</Label>
+                    <Select value={newStand.goal_class} onValueChange={v => setNewStand({ ...newStand, goal_class: v })}>
+                      <SelectTrigger><SelectValue placeholder="Välj..." /></SelectTrigger>
+                      <SelectContent>
+                        {["PG","PF","NS","NO","K","Orört"].map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Virkesdata */}
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-2">Virkesdata</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Trädslag</Label>
                     <Input placeholder="T.ex. Tall" value={newStand.tree_species} onChange={e => setNewStand({ ...newStand, tree_species: e.target.value })} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Areal (ha)</Label>
-                    <Input type="number" placeholder="0" value={newStand.area_ha} onChange={e => setNewStand({ ...newStand, area_ha: e.target.value })} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Ålder (år)</Label>
-                    <Input type="number" placeholder="0" value={newStand.age} onChange={e => setNewStand({ ...newStand, age: e.target.value })} />
-                  </div>
-                  <div className="space-y-1.5">
                     <Label>Volym (m³sk)</Label>
                     <Input type="number" placeholder="0" value={newStand.volume_m3sk} onChange={e => setNewStand({ ...newStand, volume_m3sk: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Vol/ha (m³sk)</Label>
+                    <Input type="number" placeholder="0" value={newStand.volume_per_ha} onChange={e => setNewStand({ ...newStand, volume_per_ha: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Medeldiam (cm)</Label>
+                    <Input type="number" step="0.1" placeholder="0" value={newStand.mean_diameter_cm} onChange={e => setNewStand({ ...newStand, mean_diameter_cm: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Medelhöjd (m)</Label>
+                    <Input type="number" step="0.1" placeholder="0" value={newStand.mean_height_m} onChange={e => setNewStand({ ...newStand, mean_height_m: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>G-yta (m²)</Label>
+                    <Input type="number" step="0.1" placeholder="0" value={newStand.basal_area_m2} onChange={e => setNewStand({ ...newStand, basal_area_m2: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Tillväxt (m³sk/år)</Label>
+                    <Input type="number" step="0.1" placeholder="0" value={newStand.annual_growth_m3sk} onChange={e => setNewStand({ ...newStand, annual_growth_m3sk: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Tillväxt (%)</Label>
+                    <Input type="number" step="0.1" placeholder="0" value={newStand.growth_rate_percent} onChange={e => setNewStand({ ...newStand, growth_rate_percent: e.target.value })} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -392,11 +495,10 @@ export default function Skogsbruksplan() {
                     <Label>Uppskattat värde (kr)</Label>
                     <Input type="number" placeholder="0" value={newStand.estimated_value} onChange={e => setNewStand({ ...newStand, estimated_value: e.target.value })} />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Tillväxt (%)</Label>
-                    <Input type="number" step="0.1" placeholder="0" value={newStand.growth_rate_percent} onChange={e => setNewStand({ ...newStand, growth_rate_percent: e.target.value })} />
-                  </div>
                 </div>
+
+                {/* Åtgärdsdata */}
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-2">Åtgärdsdata</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Planerad åtgärd</Label>
@@ -415,6 +517,84 @@ export default function Skogsbruksplan() {
                     <Label>Planerat år</Label>
                     <Input type="number" placeholder="2025" value={newStand.planned_year} onChange={e => setNewStand({ ...newStand, planned_year: e.target.value })} />
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Alternativ åtgärd</Label>
+                    <Input placeholder="T.ex. gallring" value={newStand.alternative_action} onChange={e => setNewStand({ ...newStand, alternative_action: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>När / prioritet</Label>
+                    <Input placeholder="T.ex. FF, 1, 2" value={newStand.timing_code} onChange={e => setNewStand({ ...newStand, timing_code: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Uttag (%)</Label>
+                    <Input type="number" placeholder="0" value={newStand.removal_percent} onChange={e => setNewStand({ ...newStand, removal_percent: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Uttag inkl tillväxt (m³sk)</Label>
+                    <Input type="number" placeholder="0" value={newStand.removal_volume_m3sk} onChange={e => setNewStand({ ...newStand, removal_volume_m3sk: e.target.value })} />
+                  </div>
+                </div>
+
+                {/* Mark & terräng */}
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-2">Mark & terräng</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Vegetationstyp</Label>
+                    <Input placeholder="T.ex. blåbärstyp" value={newStand.vegetation_type} onChange={e => setNewStand({ ...newStand, vegetation_type: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Fuktighet</Label>
+                    <Input placeholder="T.ex. frisk, fuktig" value={newStand.moisture_class} onChange={e => setNewStand({ ...newStand, moisture_class: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Terrängtyp</Label>
+                    <Input placeholder="T.ex. plan mark" value={newStand.terrain_type} onChange={e => setNewStand({ ...newStand, terrain_type: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Drivning</Label>
+                    <Input placeholder="T.ex. normal" value={newStand.driving_conditions} onChange={e => setNewStand({ ...newStand, driving_conditions: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>GYL</Label>
+                    <Input placeholder="T.ex. 1 1 1" value={newStand.gyl_values} onChange={e => setNewStand({ ...newStand, gyl_values: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Lutning</Label>
+                    <Input placeholder="T.ex. svag lutning" value={newStand.slope_info} onChange={e => setNewStand({ ...newStand, slope_info: e.target.value })} />
+                  </div>
+                </div>
+
+                {/* Beskrivningar */}
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-2">Beskrivningar</p>
+                <div className="space-y-1.5">
+                  <Label>Beskrivning</Label>
+                  <Textarea placeholder="Fritext om beståndet..." value={newStand.description} onChange={e => setNewStand({ ...newStand, description: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Produktionsmål</Label>
+                  <Input placeholder="T.ex. virkesproduktion" value={newStand.production_goal} onChange={e => setNewStand({ ...newStand, production_goal: e.target.value })} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Generell kommentar</Label>
+                    <Textarea rows={2} placeholder="" value={newStand.general_comment} onChange={e => setNewStand({ ...newStand, general_comment: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Åtgärdskommentar</Label>
+                    <Textarea rows={2} placeholder="" value={newStand.action_comment} onChange={e => setNewStand({ ...newStand, action_comment: e.target.value })} />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Speciella värden</Label>
+                  <Input placeholder="T.ex. nyckelbiotop" value={newStand.special_values} onChange={e => setNewStand({ ...newStand, special_values: e.target.value })} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Anteckningar</Label>
