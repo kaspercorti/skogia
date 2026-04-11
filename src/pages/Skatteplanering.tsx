@@ -89,6 +89,7 @@ function buildScenario(
   uttagPercent: number,
   extraIncome: number,
   extraExpenses: number,
+  losses: import("@/hooks/useLossCarryForwards").LossCarryForward[] = [],
 ): SimScenario {
   const selected = activities.filter(a => selectedActivityIds.includes(a.id));
   const actIncome = selected.reduce((s, a) => s + a.estimated_income, 0);
@@ -98,12 +99,16 @@ function buildScenario(
   const totalIncome = baseResultat + grownIncome + extraIncome;
   const totalCost = actCost + extraExpenses;
   const resultat = totalIncome - totalCost;
-  const tax = calcTaxDetailed(resultat);
-  const netAfterTax = resultat - tax;
+  const lossInfo = applyLossCarryForwards(resultat, losses);
+  const tax = calcTaxDetailed(lossInfo.taxableResultat);
+  const netAfterTax = lossInfo.taxableResultat - tax;
   return {
     id: makeScenarioId(), name, year, selectedActivityIds, uttagPercent,
     extraIncome, extraExpenses,
-    totalIncome, totalCost, resultat, tax, netAfterTax,
+    totalIncome, totalCost, resultat,
+    lossUsed: lossInfo.lossUsed,
+    taxableResultat: lossInfo.taxableResultat,
+    tax, netAfterTax,
   };
 }
 
