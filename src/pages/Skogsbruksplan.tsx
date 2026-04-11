@@ -946,100 +946,53 @@ export default function Skogsbruksplan() {
                   )}
                 </div>
 
-                {/* Volym / Uttag – visas vid relevanta åtgärdstyper */}
-                {["slutavverkning", "gallring", "röjning"].includes(newAct.type) && (
-                  <div className="rounded-lg border border-border p-3 space-y-3">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Volym & intäkt</p>
+                {/* Dynamic type-specific fields */}
+                {newAct.type && (
+                  <ActivityFormFields
+                    data={newAct}
+                    onChange={setNewAct}
+                    stands={standsForAct}
+                  />
+                )}
+
+                {/* Ekonomi – only for harvest types that use cost_per_m3sk */}
+                {HARVEST_TYPES.includes(newAct.type) && (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3">
+                    <p className="text-xs font-semibold text-primary uppercase tracking-wide">Ekonomi</p>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Uttag / såld volym (m³sk)</Label>
-                        <Input type="number" placeholder="0" className="h-8 text-sm" value={newAct.harvested_volume_m3sk} onChange={e => {
-                          const v = e.target.value;
-                          const price = Number(newAct.price_per_m3sk) || 0;
-                          const autoRev = price && Number(v) ? (price * Number(v)).toString() : newAct.total_revenue;
-                          setNewAct({ ...newAct, harvested_volume_m3sk: v, sold_volume_m3sk: v, total_revenue: autoRev });
-                        }} />
+                        <Label>Beräknad intäkt (kr)</Label>
+                        <Input type="number" placeholder="0" value={newAct.estimated_income} onChange={e => setNewAct({ ...newAct, estimated_income: e.target.value })} />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Pris per m³sk (kr)</Label>
-                        <Input type="number" placeholder="Valfritt" className="h-8 text-sm" value={newAct.price_per_m3sk} onChange={e => {
-                          const p = e.target.value;
+                        <Label>Kostnad per m³sk (kr)</Label>
+                        <Input type="number" placeholder="0" value={newAct.cost_per_m3sk ?? ""} onChange={e => {
+                          const costPerM3 = e.target.value;
                           const vol = Number(newAct.harvested_volume_m3sk) || 0;
-                          const autoRev = Number(p) && vol ? (Number(p) * vol).toString() : "";
-                          setNewAct({ ...newAct, price_per_m3sk: p, total_revenue: autoRev, estimated_income: autoRev });
+                          const totalCost = vol > 0 && Number(costPerM3) > 0 ? Math.round(vol * Number(costPerM3)) : Number(costPerM3) > 0 ? Number(costPerM3) : 0;
+                          setNewAct({ ...newAct, cost_per_m3sk: costPerM3, estimated_cost: String(totalCost) });
                         }} />
                       </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Total intäkt (kr)</Label>
-                      <Input type="number" placeholder="Beräknas automatiskt" className="h-8 text-sm" value={newAct.total_revenue} onChange={e => setNewAct({ ...newAct, total_revenue: e.target.value, estimated_income: e.target.value })} />
-                    </div>
-
-                    {/* Påverkan på bestånd */}
-                    {newAct.is_completed && newAct.stand_id && newAct.stand_id !== "none" && Number(newAct.harvested_volume_m3sk) > 0 && (() => {
-                      const stand = stands.find(s => s.id === newAct.stand_id);
-                      if (!stand) return null;
-                      const currentVol = stand.volume_m3sk ?? 0;
-                      const harvested = Number(newAct.harvested_volume_m3sk) || 0;
-                      const newVol = currentVol - harvested;
-                      const overLimit = harvested > currentVol;
+                    {(Number(newAct.estimated_income) > 0 || Number(newAct.estimated_cost) > 0) && (() => {
+                      const income = Number(newAct.estimated_income) || 0;
+                      const cost = Number(newAct.estimated_cost) || 0;
+                      const vol = Number(newAct.harvested_volume_m3sk) || 0;
+                      const netto = income - cost;
+                      const nettoPerM3 = vol > 0 ? netto / vol : null;
                       return (
-                        <div className={cn("rounded-md p-2 text-xs space-y-0.5", overLimit ? "bg-destructive/10 border border-destructive/30" : "bg-muted/50")}>
-                          <p className="font-semibold text-muted-foreground mb-1">Påverkan på bestånd: {stand.name}</p>
-                          <div className="flex justify-between"><span className="text-muted-foreground">Nuvarande virkesförråd:</span><span className="text-foreground">{fmt(currentVol)} m³sk</span></div>
-                          <div className="flex justify-between"><span className="text-muted-foreground">Uttag:</span><span className="text-foreground">−{fmt(harvested)} m³sk</span></div>
-                          <div className={cn("flex justify-between border-t border-border pt-0.5 font-semibold", overLimit ? "text-destructive" : "text-primary")}>
-                            <span>Kvar i beståndet:</span><span>{fmt(Math.max(0, newVol))} m³sk</span>
-                          </div>
-                          {overLimit && <p className="text-destructive font-medium mt-1">⚠ Uttaget överstiger tillgängligt virkesförråd!</p>}
+                        <div className="rounded-md bg-muted/50 p-2 text-xs space-y-0.5">
+                          <div className="flex justify-between"><span className="text-muted-foreground">Intäkt:</span><span className="text-foreground">{income.toLocaleString("sv-SE")} kr</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">Kostnad ({Number(newAct.cost_per_m3sk) || 0} kr/m³sk × {vol} m³sk):</span><span className="text-destructive">−{cost.toLocaleString("sv-SE")} kr</span></div>
+                          <div className="flex justify-between border-t border-border pt-0.5 font-semibold"><span className="text-muted-foreground">Netto:</span><span className={netto >= 0 ? "text-primary" : "text-destructive"}>{netto.toLocaleString("sv-SE")} kr</span></div>
+                          {nettoPerM3 !== null && (
+                            <div className="flex justify-between font-semibold"><span className="text-muted-foreground">Netto per m³sk:</span><span className={nettoPerM3 >= 0 ? "text-primary" : "text-destructive"}>{Math.round(nettoPerM3).toLocaleString("sv-SE")} kr/m³sk</span></div>
+                          )}
                         </div>
                       );
                     })()}
-
-                    {newAct.is_completed && (
-                      <label className="flex items-center gap-2 cursor-pointer pt-1">
-                        <input type="checkbox" checked={newAct.affects_forest_plan} onChange={e => setNewAct({ ...newAct, affects_forest_plan: e.target.checked })} className="rounded border-input h-4 w-4 accent-primary" />
-                        <span className="text-xs font-medium text-foreground">Uppdatera skogsbruksplan automatiskt</span>
-                      </label>
-                    )}
                   </div>
                 )}
-
-                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3">
-                  <p className="text-xs font-semibold text-primary uppercase tracking-wide">Ekonomi</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label>Beräknad intäkt (kr)</Label>
-                      <Input type="number" placeholder="0" value={newAct.estimated_income} onChange={e => setNewAct({ ...newAct, estimated_income: e.target.value })} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Kostnad per m³sk (kr)</Label>
-                      <Input type="number" placeholder="0" value={newAct.cost_per_m3sk ?? ""} onChange={e => {
-                        const costPerM3 = e.target.value;
-                        const vol = Number(newAct.harvested_volume_m3sk) || 0;
-                        const totalCost = vol > 0 && Number(costPerM3) > 0 ? Math.round(vol * Number(costPerM3)) : Number(costPerM3) > 0 ? Number(costPerM3) : 0;
-                        setNewAct({ ...newAct, cost_per_m3sk: costPerM3, estimated_cost: String(totalCost) });
-                      }} />
-                    </div>
-                  </div>
-                  {(Number(newAct.estimated_income) > 0 || Number(newAct.estimated_cost) > 0) && (() => {
-                    const income = Number(newAct.estimated_income) || 0;
-                    const cost = Number(newAct.estimated_cost) || 0;
-                    const vol = Number(newAct.harvested_volume_m3sk) || 0;
-                    const netto = income - cost;
-                    const nettoPerM3 = vol > 0 ? netto / vol : null;
-                    return (
-                      <div className="rounded-md bg-muted/50 p-2 text-xs space-y-0.5">
-                        <div className="flex justify-between"><span className="text-muted-foreground">Intäkt:</span><span className="text-foreground">{income.toLocaleString("sv-SE")} kr</span></div>
-                        <div className="flex justify-between"><span className="text-muted-foreground">Kostnad ({Number(newAct.cost_per_m3sk) || 0} kr/m³sk × {vol} m³sk):</span><span className="text-destructive">−{cost.toLocaleString("sv-SE")} kr</span></div>
-                        <div className="flex justify-between border-t border-border pt-0.5 font-semibold"><span className="text-muted-foreground">Netto:</span><span className={netto >= 0 ? "text-primary" : "text-destructive"}>{netto.toLocaleString("sv-SE")} kr</span></div>
-                        {nettoPerM3 !== null && (
-                          <div className="flex justify-between font-semibold"><span className="text-muted-foreground">Netto per m³sk:</span><span className={nettoPerM3 >= 0 ? "text-primary" : "text-destructive"}>{Math.round(nettoPerM3).toLocaleString("sv-SE")} kr/m³sk</span></div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
 
                 {/* Bidrag / Stöd */}
                 <div className="rounded-lg border border-border p-3 space-y-3">
@@ -1097,9 +1050,9 @@ export default function Skogsbruksplan() {
                       </div>
                       {(Number(newAct.estimated_cost) > 0 || Number(newAct.subsidy_amount) > 0) && (
                         <div className="rounded-md bg-muted/50 p-2 text-xs space-y-0.5">
-                          <div className="flex justify-between"><span className="text-muted-foreground">Kostnad:</span><span className="text-foreground">{(Number(newAct.estimated_cost) || 0).toLocaleString("sv-SE")} kr</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">Kostnad:</span><span className="text-foreground">{(Number(newAct.estimated_cost) || Number(newAct.total_cost) || 0).toLocaleString("sv-SE")} kr</span></div>
                           <div className="flex justify-between"><span className="text-muted-foreground">Bidrag:</span><span className="text-primary">−{(Number(newAct.subsidy_amount) || 0).toLocaleString("sv-SE")} kr</span></div>
-                          <div className="flex justify-between border-t border-border pt-0.5 font-semibold"><span className="text-muted-foreground">Nettokostnad:</span><span className="text-foreground">{((Number(newAct.estimated_cost) || 0) - (Number(newAct.subsidy_amount) || 0)).toLocaleString("sv-SE")} kr</span></div>
+                          <div className="flex justify-between border-t border-border pt-0.5 font-semibold"><span className="text-muted-foreground">Nettokostnad:</span><span className="text-foreground">{((Number(newAct.estimated_cost) || Number(newAct.total_cost) || 0) - (Number(newAct.subsidy_amount) || 0)).toLocaleString("sv-SE")} kr</span></div>
                         </div>
                       )}
                     </div>
