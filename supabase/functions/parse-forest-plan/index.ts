@@ -358,25 +358,32 @@ async function callExtractionAI(apiKey: string, structuredText: string, base64Pd
       messages: [
         {
           role: "system",
-          content: `Du är en expert på svenska skogsbruksplaner. Din uppgift är att läsa av avdelningsbeskrivningar från en skogsbruksplan och extrahera BARA de viktigaste uppgifterna per avdelning/bestånd.
+          content: `Du är en expert på svenska skogsbruksplaner. Din uppgift är att läsa av avdelningsbeskrivningar från en skogsbruksplan och extrahera uppgifterna per avdelning/bestånd.
 
-Fokusera ENBART på:
-- Avdelningsnummer eller namn
+Fält att extrahera per avdelning:
+- Avdelningsnummer eller namn (Avd nr)
 - Huvudträdslag (tall, gran, björk, löv, blandskog etc.)
 - Areal i hektar
-- Ålder (medelålder eller dominerande ålder)
-- Virkesförråd/volym (m³sk)
-- Bonitet/ståndortsindex (t.ex. T24, G28, B20)
-- Planerad/föreslagen åtgärd (slutavverkning, gallring, röjning, plantering, ingen åtgärd)
-- Planerat år eller tidsperiod för åtgärden
-- Viktiga anteckningar (t.ex. stormskador, speciella hänsyn)
+- Ålder (medelålder, åld, dominantålder)
+- Huggningsklass (Hkl) – t.ex. K1, K2, S1, S2, S3, R1, R2, E1, E2, E3
+- Ståndortsindex/Bonitet (SI) – t.ex. T24, G28, B20
+- Virkesförråd/volym (m³sk) – total volym per avdelning
+- Medeldiameter (cm) – medeldiam
+- Medelhöjd (m)
+- Målklass – t.ex. PG, NS, NO, K, PF
+- Grundyta (G-yta) i m²
+- Årlig tillväxt (m³sk)
+- Beskrivning – fri text om beståndet
+- Åtgärd – planerad/föreslagen åtgärd
+- År/När – planerat år eller period för åtgärden
+- Uttag (m³sk) – planerat uttag vid åtgärd
+- Anteckningar – övriga viktiga noteringar
 
 VIKTIGT:
 - Läs främst av avdelningsbeskrivningen, inte övriga sammanställningar
-- Ålder kan stå som "Ålder", "Åld", "medelålder" eller liknande
+- Kolumnrubrikerna kan vara förkortade: "Åld" = ålder, "SI" = ståndortsindex, "Hkl" = huggningsklass, "Med diam" = medeldiameter, "Med höjd" = medelhöjd
 - Om ett värde inte kan utläsas säkert, lämna det som null
 - Sätt confidence till lägre värde om du är osäker
-- Tolka INTE oviktiga detaljer
 - En avdelning kan ha blandträdslag – ange det dominerande
 - Svara BARA med det anropade verktyget`,
         },
