@@ -86,7 +86,33 @@ export default function ForestPlanImport({ properties, triggerRef }: ForestPlanI
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [showNewPropForm, setShowNewPropForm] = useState(false);
+  const [inlineProp, setInlineProp] = useState({ name: "", municipality: "", total_area_ha: "", productive_forest_ha: "" });
+
+  // Expose trigger so parent can open file picker
+  useEffect(() => {
+    if (triggerRef) {
+      triggerRef.current = () => fileRef.current?.click();
+    }
+    return () => { if (triggerRef) triggerRef.current = null; };
+  }, [triggerRef]);
+
+  const handleCreateInlineProperty = async () => {
+    if (!inlineProp.name || !user) return;
+    const { data, error } = await supabase.from("properties").insert({
+      user_id: user.id,
+      name: inlineProp.name,
+      municipality: inlineProp.municipality || null,
+      total_area_ha: Number(inlineProp.total_area_ha) || 0,
+      productive_forest_ha: Number(inlineProp.productive_forest_ha) || 0,
+    }).select("id").single();
+    if (error) { toast.error("Kunde inte skapa fastighet: " + error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ["properties"] });
+    toast.success("Fastighet skapad");
+    setSelectedPropertyId(data.id);
+    setInlineProp({ name: "", municipality: "", total_area_ha: "", productive_forest_ha: "" });
+    setShowNewPropForm(false);
+  };
 
   const reset = () => {
     setStep("idle");
