@@ -763,6 +763,15 @@ export default function Skogsbruksplan() {
     });
   }, [stands, newAct.property_id]);
 
+  const standsForEditAct = useMemo(() => {
+    const filtered = editAct.property_id ? stands.filter(s => s.property_id === editAct.property_id) : [];
+    return [...filtered].sort((a, b) => {
+      const numA = parseInt(a.name.replace(/\D/g, '')) || 0;
+      const numB = parseInt(b.name.replace(/\D/g, '')) || 0;
+      return numA - numB;
+    });
+  }, [stands, editAct.property_id]);
+
   return (
     <main className="flex-1 p-4 md:p-8 overflow-auto">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
