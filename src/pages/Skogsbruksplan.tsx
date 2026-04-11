@@ -66,6 +66,21 @@ export default function Skogsbruksplan() {
     setPropDialogOpen(false);
   };
 
+  const handleDeleteProperty = async (propertyId: string, propertyName: string) => {
+    if (!user) return;
+    // Delete stands, activities, then property
+    const { error: actErr } = await supabase.from("forest_activities").delete().eq("property_id", propertyId);
+    if (actErr) { toast.error("Kunde inte ta bort aktiviteter: " + actErr.message); return; }
+    const { error: standErr } = await supabase.from("stands").delete().eq("property_id", propertyId);
+    if (standErr) { toast.error("Kunde inte ta bort bestånd: " + standErr.message); return; }
+    const { error } = await supabase.from("properties").delete().eq("id", propertyId);
+    if (error) { toast.error("Kunde inte ta bort: " + error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ["properties"] });
+    queryClient.invalidateQueries({ queryKey: ["stands"] });
+    queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
+    toast.success(`Fastighet "${propertyName}" borttagen`);
+  };
+
   const handleAddStand = async () => {
     if (!newStand.name || !newStand.property_id || !user) return;
     const { error } = await supabase.from("stands").insert({
