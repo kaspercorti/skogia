@@ -1,7 +1,8 @@
-import { useState, useRef } from "react";
-import { Upload, FileText, Loader2, Check, AlertTriangle, X, Edit2, ChevronDown, ChevronUp } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Upload, FileText, Loader2, Check, AlertTriangle, X, Edit2, ChevronDown, ChevronUp, Plus, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -65,11 +66,12 @@ interface ExtractedStand {
 
 interface ForestPlanImportProps {
   properties: Property[];
+  triggerRef?: React.MutableRefObject<(() => void) | null>;
 }
 
 type ImportStep = "idle" | "uploading" | "processing" | "review" | "importing" | "done" | "error";
 
-export default function ForestPlanImport({ properties }: ForestPlanImportProps) {
+export default function ForestPlanImport({ properties, triggerRef }: ForestPlanImportProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -85,6 +87,33 @@ export default function ForestPlanImport({ properties }: ForestPlanImportProps) 
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [showNewPropForm, setShowNewPropForm] = useState(false);
+  const [inlineProp, setInlineProp] = useState({ name: "", municipality: "", total_area_ha: "", productive_forest_ha: "" });
+
+  // Expose trigger so parent can open file picker
+  useEffect(() => {
+    if (triggerRef) {
+      triggerRef.current = () => fileRef.current?.click();
+    }
+    return () => { if (triggerRef) triggerRef.current = null; };
+  }, [triggerRef]);
+
+  const handleCreateInlineProperty = async () => {
+    if (!inlineProp.name || !user) return;
+    const { data, error } = await supabase.from("properties").insert({
+      user_id: user.id,
+      name: inlineProp.name,
+      municipality: inlineProp.municipality || null,
+      total_area_ha: Number(inlineProp.total_area_ha) || 0,
+      productive_forest_ha: Number(inlineProp.productive_forest_ha) || 0,
+    }).select("id").single();
+    if (error) { toast.error("Kunde inte skapa fastighet: " + error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ["properties"] });
+    toast.success("Fastighet skapad");
+    setSelectedPropertyId(data.id);
+    setInlineProp({ name: "", municipality: "", total_area_ha: "", productive_forest_ha: "" });
+    setShowNewPropForm(false);
+  };
 
   const reset = () => {
     setStep("idle");
@@ -362,16 +391,50 @@ export default function ForestPlanImport({ properties }: ForestPlanImportProps) 
 
               <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
                 <label className="text-sm font-medium text-foreground block mb-2">Välj fastighet att importera till *</label>
-                <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
-                  <SelectTrigger className="max-w-xs">
-                    <SelectValue placeholder="Välj fastighet..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {properties.map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                  <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+                    <SelectTrigger className="max-w-xs">
+                      <SelectValue placeholder="Välj fastighet..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {properties.map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" variant="outline" size="sm" className="gap-1.5 shrink-0" onClick={() => setShowNewPropForm(v => !v)}>
+                    <Plus className="h-3.5 w-3.5" /> Ny fastighet
+                  </Button>
+                </div>
+                {showNewPropForm && (
+                  <div className="mt-3 rounded-lg border border-border bg-card p-3 space-y-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> Skapa ny fastighet</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Namn *</Label>
+                        <Input placeholder="T.ex. Sörgården 1:24" className="h-8 text-sm" value={inlineProp.name} onChange={e => setInlineProp({ ...inlineProp, name: e.target.value })} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Kommun</Label>
+                        <Input placeholder="T.ex. Ljusdal" className="h-8 text-sm" value={inlineProp.municipality} onChange={e => setInlineProp({ ...inlineProp, municipality: e.target.value })} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Total areal (ha)</Label>
+                        <Input type="number" placeholder="0" className="h-8 text-sm" value={inlineProp.total_area_ha} onChange={e => setInlineProp({ ...inlineProp, total_area_ha: e.target.value })} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Produktiv skog (ha)</Label>
+                        <Input type="number" placeholder="0" className="h-8 text-sm" value={inlineProp.productive_forest_ha} onChange={e => setInlineProp({ ...inlineProp, productive_forest_ha: e.target.value })} />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={handleCreateInlineProperty} disabled={!inlineProp.name}>Skapa</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setShowNewPropForm(false)}>Avbryt</Button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
