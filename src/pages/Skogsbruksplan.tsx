@@ -299,6 +299,27 @@ export default function Skogsbruksplan() {
   };
 
   const handleDeleteActivity = async (activityId: string) => {
+    // Find the activity to check if we need to restore stand volume
+    const activity = activities.find(a => a.id === activityId);
+    
+    if (activity && activity.is_completed && activity.plan_updated && activity.stand_id && activity.harvested_volume_m3sk > 0) {
+      // Restore stand volume before deleting
+      const stand = stands.find(s => s.id === activity.stand_id);
+      if (stand) {
+        const restoredVol = (stand.volume_m3sk ?? 0) + activity.harvested_volume_m3sk;
+        const { error: standErr } = await supabase.from("stands").update({
+          volume_m3sk: restoredVol,
+          volume_per_ha: stand.area_ha > 0 ? Math.round((restoredVol / stand.area_ha) * 10) / 10 : null,
+        }).eq("id", stand.id);
+        if (standErr) {
+          toast.error("Kunde inte återställa beståndsvolym: " + standErr.message);
+          return;
+        }
+        queryClient.invalidateQueries({ queryKey: ["stands"] });
+        toast.success(`Virkesförråd återställt: ${fmt(stand.volume_m3sk ?? 0)} → ${fmt(restoredVol)} m³sk`);
+      }
+    }
+
     const { error } = await supabase.from("forest_activities").delete().eq("id", activityId);
     if (error) { toast.error("Kunde inte ta bort: " + error.message); return; }
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
