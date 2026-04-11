@@ -288,7 +288,7 @@ export default function Skogsbruksplan() {
 
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
     toast.success("Aktivitet skapad");
-    setNewAct(emptyAct);
+    setNewAct(emptyActivityForm);
     setActDialogOpen(false);
   };
 
