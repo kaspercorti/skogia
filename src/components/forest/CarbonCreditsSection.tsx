@@ -101,7 +101,11 @@ export default function CarbonCreditsSection({ stands }: CarbonCreditsSectionPro
               </TableRow>
             </TableHeader>
             <TableBody>
-              {carbon.stands.map((s) => (
+              {[...carbon.stands].sort((a, b) => {
+                const numA = parseInt(a.standName.replace(/\D/g, '')) || 0;
+                const numB = parseInt(b.standName.replace(/\D/g, '')) || 0;
+                return numA - numB;
+              }).map((s) => (
                 <TableRow key={s.standId}>
                   <TableCell className="text-sm font-medium text-card-foreground">{s.standName}</TableCell>
                   <TableCell className="text-right text-sm tabular-nums text-muted-foreground">{fmt(s.annualGrowthM3sk)}</TableCell>
