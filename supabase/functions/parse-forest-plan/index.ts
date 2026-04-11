@@ -1,14 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
-
-const SECTION_CONTEXT_RADIUS = 16;
 
 type ExtractedStand = {
   name: string;
@@ -16,6 +13,7 @@ type ExtractedStand = {
   area_ha: number | null;
   age: number | null;
   volume_m3sk: number | null;
+  volume_per_ha: number | null;
   site_index: string | null;
   huggningsklass: string | null;
   mean_diameter_cm: number | null;
@@ -28,6 +26,27 @@ type ExtractedStand = {
   planned_year: number | null;
   notes: string | null;
   confidence: number | null;
+  // New extended fields
+  parcel_number: string | null;
+  layer: string | null;
+  species_breakdown: any[] | null;
+  alternative_action: string | null;
+  timing_code: string | null;
+  removal_percent: number | null;
+  removal_volume_m3sk: number | null;
+  vegetation_type: string | null;
+  moisture_class: string | null;
+  terrain_type: string | null;
+  driving_conditions: string | null;
+  slope_info: string | null;
+  gyl_values: string | null;
+  production_goal: string | null;
+  general_comment: string | null;
+  action_comment: string | null;
+  special_values: string | null;
+  raw_description_text: string | null;
+  raw_full_text: string | null;
+  field_confidence_map: Record<string, string> | null;
 };
 
 type ParsedForestPlan = {
@@ -36,7 +55,6 @@ type ParsedForestPlan = {
   notes?: string | null;
 };
 
-
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -44,23 +62,15 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 function parseNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value !== "string") return null;
-
   const intervalMatch = value.match(/(\d+(?:[.,]\d+)?)\s*[-–]\s*(\d+(?:[.,]\d+)?)/);
   if (intervalMatch) {
     const start = Number(intervalMatch[1].replace(",", "."));
     const end = Number(intervalMatch[2].replace(",", "."));
-    if (Number.isFinite(start) && Number.isFinite(end)) {
-      return Number(((start + end) / 2).toFixed(1));
-    }
+    if (Number.isFinite(start) && Number.isFinite(end)) return Number(((start + end) / 2).toFixed(1));
   }
-
   const match = value.replace(/\s/g, "").match(/-?\d+(?:[.,]\d+)?/);
   if (!match) return null;
   const parsed = Number(match[0].replace(",", "."));
@@ -91,6 +101,7 @@ function normalizeStand(raw: Record<string, unknown>): ExtractedStand {
     area_ha: parseNumber(raw.area_ha),
     age: toIntegerOrNull(raw.age),
     volume_m3sk: parseNumber(raw.volume_m3sk),
+    volume_per_ha: parseNumber(raw.volume_per_ha),
     site_index: toStringOrNull(raw.site_index),
     huggningsklass: toStringOrNull(raw.huggningsklass),
     mean_diameter_cm: parseNumber(raw.mean_diameter_cm),
@@ -103,6 +114,29 @@ function normalizeStand(raw: Record<string, unknown>): ExtractedStand {
     planned_year: toIntegerOrNull(raw.planned_year),
     notes: toStringOrNull(raw.notes),
     confidence: clampConfidence(raw.confidence),
+    // Extended fields
+    parcel_number: toStringOrNull(raw.parcel_number),
+    layer: toStringOrNull(raw.layer),
+    species_breakdown: Array.isArray(raw.species_breakdown) ? raw.species_breakdown : null,
+    alternative_action: toStringOrNull(raw.alternative_action),
+    timing_code: toStringOrNull(raw.timing_code),
+    removal_percent: parseNumber(raw.removal_percent),
+    removal_volume_m3sk: parseNumber(raw.removal_volume_m3sk),
+    vegetation_type: toStringOrNull(raw.vegetation_type),
+    moisture_class: toStringOrNull(raw.moisture_class),
+    terrain_type: toStringOrNull(raw.terrain_type),
+    driving_conditions: toStringOrNull(raw.driving_conditions),
+    slope_info: toStringOrNull(raw.slope_info),
+    gyl_values: toStringOrNull(raw.gyl_values),
+    production_goal: toStringOrNull(raw.production_goal),
+    general_comment: toStringOrNull(raw.general_comment),
+    action_comment: toStringOrNull(raw.action_comment),
+    special_values: toStringOrNull(raw.special_values),
+    raw_description_text: toStringOrNull(raw.raw_description_text),
+    raw_full_text: toStringOrNull(raw.raw_full_text),
+    field_confidence_map: (raw.field_confidence_map && typeof raw.field_confidence_map === "object" && !Array.isArray(raw.field_confidence_map))
+      ? raw.field_confidence_map as Record<string, string>
+      : null,
   };
 }
 
@@ -110,167 +144,25 @@ function bufferToBase64(buffer: ArrayBuffer) {
   const bytes = new Uint8Array(buffer);
   const chunkSize = 0x8000;
   const parts: string[] = [];
-
   for (let index = 0; index < bytes.length; index += chunkSize) {
     parts.push(String.fromCharCode(...bytes.subarray(index, index + chunkSize)));
   }
-
   return btoa(parts.join(""));
 }
 
-
-function buildStandMatcher(name: string) {
-  const rawName = name.trim();
-  const normalizedName = rawName.replace(/^avd(?:elning)?\.?\s*/i, "").trim();
-
-  if (/^\d+[a-zåäö]?$/i.test(normalizedName)) {
-    return new RegExp(`(?:^|\\b)(?:avd(?:elning)?\\.?\\s*)?${escapeRegExp(normalizedName)}(?:\\b|$)`, "i");
-  }
-
-  return new RegExp(escapeRegExp(rawName), "i");
-}
-
-function getStandSection(structuredText: string, standName: string) {
-  if (!standName) return "";
-
-  const lines = structuredText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  const matcher = buildStandMatcher(standName);
-  const matchIndex = lines.findIndex((line) => matcher.test(line));
-  if (matchIndex === -1) return "";
-
-  const start = Math.max(0, matchIndex - 2);
-  const end = Math.min(lines.length, matchIndex + SECTION_CONTEXT_RADIUS + 1);
-  return lines.slice(start, end).join("\n");
-}
-
-function matchFirstNumber(text: string, patterns: RegExp[]) {
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (match?.[1]) return parseNumber(match[1]);
-  }
-
-  return null;
-}
-
-function detectTreeSpecies(text: string) {
-  const lower = text.toLowerCase();
-  const hits = [
-    lower.includes("gran") ? "Gran" : null,
-    lower.includes("tall") ? "Tall" : null,
-    lower.includes("björk") ? "Björk" : null,
-    lower.includes("löv") ? "Löv" : null,
-    lower.includes("lärk") ? "Lärk" : null,
-  ].filter(Boolean) as string[];
-
-  if (lower.includes("blandskog") || hits.length > 1) return "Blandskog";
-  return hits[0] ?? null;
-}
-
-function detectPlannedAction(text: string) {
-  if (/slutavverk/i.test(text)) return "slutavverkning";
-  if (/gallr/i.test(text)) return "gallring";
-  if (/röjn/i.test(text)) return "röjning";
-  if (/planter/i.test(text)) return "plantering";
-  if (/markbered/i.test(text)) return "markberedning";
-  return null;
-}
-
-function enrichStandFromSection(stand: ExtractedStand, section: string) {
-  if (!section) return stand;
-
-  let supplementedFields = 0;
-  let nextStand = { ...stand };
-
-  const age = nextStand.age ?? toIntegerOrNull(matchFirstNumber(section, [
-    /(?:medelålder|medelåld|ålder|åld)\s*[:=]?\s*(\d{1,3}(?:\s*[-–]\s*\d{1,3})?)/i,
-    /(?:beståndsålder|dominantålder)\s*[:=]?\s*(\d{1,3}(?:\s*[-–]\s*\d{1,3})?)/i,
-  ]));
-  if (nextStand.age === null && age !== null) {
-    nextStand.age = age;
-    supplementedFields += 1;
-  }
-
-  const area = nextStand.area_ha ?? matchFirstNumber(section, [
-    /areal\s*[:=]?\s*(\d+(?:[.,]\d+)?)/i,
-    /(\d+(?:[.,]\d+)?)\s*ha\b/i,
-  ]);
-  if (nextStand.area_ha === null && area !== null) {
-    nextStand.area_ha = area;
-    supplementedFields += 1;
-  }
-
-  const volume = nextStand.volume_m3sk ?? matchFirstNumber(section, [
-    /(?:virkesförråd|förråd|volym)\s*[:=]?\s*(\d+(?:[.,]\d+)?)/i,
-    /(\d+(?:[.,]\d+)?)\s*(?:m³sk|m3sk|m³|m3)\b/i,
-  ]);
-  if (nextStand.volume_m3sk === null && volume !== null) {
-    nextStand.volume_m3sk = volume;
-    supplementedFields += 1;
-  }
-
-  const siteIndex = nextStand.site_index ?? (section.match(/\b([TGFBL]\s?\d{1,2})\b/i)?.[1]?.replace(/\s+/g, "") ?? null);
-  if (nextStand.site_index === null && siteIndex) {
-    nextStand.site_index = siteIndex.toUpperCase();
-    supplementedFields += 1;
-  }
-
-  const plannedYear = nextStand.planned_year ?? toIntegerOrNull(matchFirstNumber(section, [
-    /(?:plan(?:erat|erad)?\s*(?:år|tid)?|åtgärd(?:sår)?)\s*[:=]?\s*(20\d{2})/i,
-    /(?:slutavverkning|gallring|röjning|plantering|markberedning)[^\n]{0,30}?(20\d{2})/i,
-  ]));
-  if (nextStand.planned_year === null && plannedYear !== null) {
-    nextStand.planned_year = plannedYear;
-    supplementedFields += 1;
-  }
-
-  const plannedAction = nextStand.planned_action ?? detectPlannedAction(section);
-  if (nextStand.planned_action === null && plannedAction) {
-    nextStand.planned_action = plannedAction;
-    supplementedFields += 1;
-  }
-
-  const treeSpecies = nextStand.tree_species ?? detectTreeSpecies(section);
-  if (nextStand.tree_species === null && treeSpecies) {
-    nextStand.tree_species = treeSpecies;
-    supplementedFields += 1;
-  }
-
-  if (supplementedFields > 0) {
-    nextStand.confidence = Math.max(nextStand.confidence ?? 0, 60);
-  }
-
-  return nextStand;
-}
-
-function enrichParsedResult(rawParsed: Record<string, unknown>, structuredText: string): ParsedForestPlan {
+function enrichParsedResult(rawParsed: Record<string, unknown>): ParsedForestPlan {
   const stands = Array.isArray(rawParsed.stands)
-    ? rawParsed.stands.map((stand) => normalizeStand((stand ?? {}) as Record<string, unknown>)).filter((stand) => stand.name)
+    ? rawParsed.stands.map((s) => normalizeStand((s ?? {}) as Record<string, unknown>)).filter((s) => s.name)
     : [];
 
-  const enrichedStands = structuredText
-    ? stands.map((stand) => enrichStandFromSection(stand, getStandSection(structuredText, stand.name) || structuredText))
-    : stands;
-
-  const originalAges = stands.filter((stand) => stand.age !== null).length;
-  const enrichedAges = enrichedStands.filter((stand) => stand.age !== null).length;
-  const notes: string[] = [];
-
-  const originalNotes = toStringOrNull(rawParsed.notes);
-  if (originalNotes) notes.push(originalNotes);
-  if (structuredText && enrichedAges > originalAges) {
-    notes.push("Vissa fält kompletterades från PDF:ens avdelningsbeskrivning, bland annat ålder där den gick att läsa ut säkert.");
-  }
-
   return {
-    stands: enrichedStands,
+    stands,
     overall_confidence: clampConfidence(rawParsed.overall_confidence) ?? 0,
-    notes: notes.length > 0 ? notes.join(" ") : null,
+    notes: toStringOrNull(rawParsed.notes),
   };
 }
 
 async function callExtractionAI(apiKey: string, base64Pdf: string) {
-  
-
   return await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -282,55 +174,93 @@ async function callExtractionAI(apiKey: string, base64Pdf: string) {
       messages: [
         {
           role: "system",
-          content: `Du är en expert på svenska skogsbruksplaner. Din uppgift är att läsa av avdelningsbeskrivningar från en skogsbruksplan och extrahera uppgifterna per avdelning/bestånd.
+          content: `Du är en expert på svenska skogsbruksplaner. Din uppgift är att läsa HELA avdelningsbeskrivningen och extrahera SÅ MYCKET DATA SOM MÖJLIGT per avdelning.
 
-Fält att extrahera per avdelning:
-- Avdelningsnummer eller namn (Avd nr)
-- Huvudträdslag (tall, gran, björk, löv, blandskog etc.)
-- Areal i hektar
-- Ålder (medelålder, åld, dominantålder)
-- Huggningsklass (Hkl) – t.ex. K1, K2, S1, S2, S3, R1, R2, E1, E2, E3
-- Ståndortsindex/Bonitet (SI) – t.ex. T24, G28, B20
-- Virkesförråd/volym (m³sk) – total volym per avdelning
-- Medeldiameter (cm) – medeldiam
-- Medelhöjd (m)
-- Målklass – t.ex. PG, NS, NO, K, PF
-- Grundyta (G-yta) i m²
-- Årlig tillväxt (m³sk)
-- Beskrivning – fri text om beståndet
-- Åtgärd – planerad/föreslagen åtgärd
-- År/När – planerat år eller period för åtgärden
-- Uttag (m³sk) – planerat uttag vid åtgärd
-- Anteckningar – övriga viktiga noteringar
+Du ska extrahera ALLA följande fält när de finns:
+
+GRUNDDATA:
+- Avdelningsnummer (name)
+- Skifte (parcel_number)
+- Skikt (layer)
+- Areal i hektar (area_ha)
+- Ålder i år (age)
+- Huggningsklass/Hkl – t.ex. K1, K2, S1, S2, S3, R1, R2, E1, E2, E3 (huggningsklass)
+- Ståndortsindex/Bonitet (SI) – t.ex. T24, G28, B20 (site_index)
+- Virkesförråd total m³sk (volume_m3sk)
+- Virkesförråd per ha (volume_per_ha)
+- Huvudträdslag (tree_species)
+- Medeldiameter cm (mean_diameter_cm)
+- Medelhöjd m (mean_height_m)
+- Målklass – PG, NS, NO, K, PF (goal_class)
+- Grundyta G-yta m² (basal_area_m2)
+- Årlig tillväxt m³sk (annual_growth_m3sk)
+
+TRÄDSLAGSFÖRDELNING (species_breakdown):
+Array med objekt: { species: "Tall", percent: 60, volume_m3sk: 120 }
+Inkludera alla trädslag som nämns med andel och/eller volym.
+
+ÅTGÄRDSDATA:
+- Planerad åtgärd (planned_action)
+- Alternativ åtgärd (alternative_action)
+- När/prioritet/timing (timing_code)
+- Planerat år (planned_year)
+- Uttag i procent (removal_percent)
+- Uttag inklusive tillväxt m³sk (removal_volume_m3sk)
+
+MARK OCH TERRÄNG:
+- Vegetationstyp – blåbärstyp, smalbladig grästyp, lingontyp etc (vegetation_type)
+- Fuktighet – frisk, fuktig, torr, blöt, myr (moisture_class)
+- Terrängtyp (terrain_type)
+- Drivningsförutsättningar (driving_conditions)
+- Lutning / plan mark (slope_info)
+- G, Y, L-värden (gyl_values)
+
+BESKRIVNINGAR:
+- Produktionsmål (production_goal)
+- Generell kommentar (general_comment)
+- Åtgärdskommentar (action_comment)
+- Speciella värden – naturvärden, kulturvärden etc (special_values)
+- Anteckningar/noteringar (notes)
+- Beskrivning/fri text om beståndet (description)
+
+RÅTEXT:
+- raw_description_text: HELA beskrivningstexten för avdelningen, ordagrant kopierad
+- raw_full_text: All text som hör till avdelningen, inklusive tabellvärden formaterade som text
+
+OSÄKERHET PER FÄLT (field_confidence_map):
+Ange osäkerhet per fält som objekt, t.ex.:
+{ "area_ha": "high", "site_index": "medium", "moisture_class": "low", "production_goal": "extracted_from_raw" }
+Nivåer: "high", "medium", "low", "extracted_from_raw"
 
 VIKTIGT:
-- Läs främst av avdelningsbeskrivningen, inte övriga sammanställningar
-- Kolumnrubrikerna kan vara förkortade: "Åld" = ålder, "SI" = ståndortsindex, "Hkl" = huggningsklass, "Med diam" = medeldiameter, "Med höjd" = medelhöjd
-- Om ett värde inte kan utläsas säkert, lämna det som null
-- Sätt confidence till lägre värde om du är osäker
-- En avdelning kan ha blandträdslag – ange det dominerande
+- Läs HELA avdelningsbeskrivningen, inte bara tabellens huvudkolumner
+- Fånga även löptext, kommentarer, noteringar under/efter varje avdelning
+- Inkludera marktyp, myr, fuktighet, vegetationstyp, terräng, drivning, GYL
+- Om ett värde inte kan tolkas säkert, lämna strukturerat fält som null men inkludera det i raw_description_text
+- Spara HELLRE FÖR MYCKET än för lite – ingen information ska kastas bort
+- Kolumnrubrikerna kan vara förkortade: "Åld" = ålder, "SI" = bonitet, "Hkl" = huggningsklass, "Med diam" = medeldiameter, "Med höjd" = medelhöjd, "G-yta" = grundyta, "Trp" = terrängklass
 - Svara BARA med det anropade verktyget`,
         },
         {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: "Läs av avdelningsbeskrivningen i denna skogsbruksplan. Extrahera ALLA uppgifter per avdelning/bestånd inklusive huggningsklass, medeldiameter, medelhöjd, målklass, grundyta och årlig tillväxt.",
-                },
-                {
-                  type: "image_url",
-                  image_url: { url: `data:application/pdf;base64,${base64Pdf}` },
-                },
-              ],
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Läs av HELA avdelningsbeskrivningen i denna skogsbruksplan. Extrahera ALL data per avdelning – grunddata, trädslagsfördelning, mark/terräng, kommentarer, åtgärder och råtext. Missa INGET.",
             },
+            {
+              type: "image_url",
+              image_url: { url: `data:application/pdf;base64,${base64Pdf}` },
+            },
+          ],
+        },
       ],
       tools: [
         {
           type: "function",
           function: {
             name: "extract_forest_stands",
-            description: "Extract stand/compartment data from a Swedish forest management plan",
+            description: "Extract complete compartment data from a Swedish forest management plan including terrain, species breakdown, raw text and per-field confidence",
             parameters: {
               type: "object",
               properties: {
@@ -339,34 +269,67 @@ VIKTIGT:
                   items: {
                     type: "object",
                     properties: {
-                      name: { type: "string", description: "Avdelningsnummer eller namn, t.ex. 'Avd 1' eller '1a'" },
-                      tree_species: { type: "string", description: "Huvudträdslag, t.ex. 'Tall', 'Gran', 'Björk'" },
-                      area_ha: { type: "number", description: "Areal i hektar" },
-                      age: { type: "number", description: "Ålder i år" },
-                      volume_m3sk: { type: "number", description: "Virkesförråd i m³sk (total per avdelning)" },
-                      site_index: { type: "string", description: "Bonitet/ståndortsindex, t.ex. 'T24', 'G28'" },
-                      huggningsklass: { type: "string", description: "Huggningsklass, t.ex. 'K1', 'S1', 'S2', 'S3', 'R1', 'R2', 'E1'" },
-                      mean_diameter_cm: { type: "number", description: "Medeldiameter i cm" },
-                      mean_height_m: { type: "number", description: "Medelhöjd i meter" },
-                      goal_class: { type: "string", description: "Målklass, t.ex. 'PG', 'NS', 'NO', 'K', 'PF'" },
-                      basal_area_m2: { type: "number", description: "Grundyta (G-yta) i m² per ha" },
-                      annual_growth_m3sk: { type: "number", description: "Årlig tillväxt i m³sk" },
-                      description: { type: "string", description: "Beskrivning av beståndet" },
-                      planned_action: { type: "string", description: "Planerad åtgärd: slutavverkning, gallring, röjning, plantering, markberedning, ingen åtgärd" },
-                      planned_year: { type: "number", description: "Planerat år för åtgärden" },
-                      harvest_volume_m3sk: { type: "number", description: "Planerat uttag i m³sk vid åtgärd" },
-                      notes: { type: "string", description: "Viktiga anteckningar" },
-                      confidence: { type: "number", description: "Säkerhet 0-100 på denna avdelnings data" },
+                      name: { type: "string", description: "Avdelningsnummer, t.ex. '1' eller '2a'" },
+                      parcel_number: { type: "string", description: "Skifte" },
+                      layer: { type: "string", description: "Skikt" },
+                      tree_species: { type: "string", description: "Huvudträdslag" },
+                      area_ha: { type: "number", description: "Areal ha" },
+                      age: { type: "number", description: "Ålder år" },
+                      huggningsklass: { type: "string", description: "Hkl – K1, K2, S1, S2, S3, R1, R2, E1, E2, E3" },
+                      site_index: { type: "string", description: "Bonitet/SI, t.ex. T24, G28" },
+                      volume_m3sk: { type: "number", description: "Total volym m³sk" },
+                      volume_per_ha: { type: "number", description: "Volym per ha m³sk" },
+                      mean_diameter_cm: { type: "number", description: "Medeldiameter cm" },
+                      mean_height_m: { type: "number", description: "Medelhöjd m" },
+                      goal_class: { type: "string", description: "Målklass – PG, NS, NO, K, PF" },
+                      basal_area_m2: { type: "number", description: "Grundyta m²/ha" },
+                      annual_growth_m3sk: { type: "number", description: "Årlig tillväxt m³sk" },
+                      species_breakdown: {
+                        type: "array",
+                        description: "Trädslagsfördelning",
+                        items: {
+                          type: "object",
+                          properties: {
+                            species: { type: "string" },
+                            percent: { type: "number" },
+                            volume_m3sk: { type: "number" },
+                          },
+                        },
+                      },
+                      planned_action: { type: "string", description: "Planerad åtgärd" },
+                      alternative_action: { type: "string", description: "Alternativ åtgärd" },
+                      timing_code: { type: "string", description: "När/prioritet/timing" },
+                      planned_year: { type: "number", description: "Planerat år" },
+                      removal_percent: { type: "number", description: "Uttag i %" },
+                      removal_volume_m3sk: { type: "number", description: "Uttag inkl tillväxt m³sk" },
+                      vegetation_type: { type: "string", description: "Vegetationstyp – blåbärstyp, smalbladig grästyp, lingontyp" },
+                      moisture_class: { type: "string", description: "Fuktighet – frisk, fuktig, torr, blöt, myr" },
+                      terrain_type: { type: "string", description: "Terrängtyp" },
+                      driving_conditions: { type: "string", description: "Drivningsförutsättningar" },
+                      slope_info: { type: "string", description: "Lutning / plan mark" },
+                      gyl_values: { type: "string", description: "G, Y, L-värden" },
+                      production_goal: { type: "string", description: "Produktionsmål" },
+                      general_comment: { type: "string", description: "Generell kommentar" },
+                      action_comment: { type: "string", description: "Åtgärdskommentar" },
+                      special_values: { type: "string", description: "Speciella värden – naturvärden, kulturvärden" },
+                      description: { type: "string", description: "Beskrivning / fri text" },
+                      notes: { type: "string", description: "Anteckningar / noteringar" },
+                      raw_description_text: { type: "string", description: "HELA beskrivningstexten ordagrant" },
+                      raw_full_text: { type: "string", description: "All text som hör till avdelningen" },
+                      field_confidence_map: {
+                        type: "object",
+                        description: "Osäkerhet per fält: { fältnamn: 'high'|'medium'|'low'|'extracted_from_raw' }",
+                        additionalProperties: { type: "string" },
+                      },
+                      confidence: { type: "number", description: "Övergripande säkerhet 0-100" },
                     },
                     required: ["name"],
-                    additionalProperties: false,
                   },
                 },
-                overall_confidence: { type: "number", description: "Övergripande säkerhet 0-100 på hela tolkningen" },
-                notes: { type: "string", description: "Övergripande anteckningar om tolkningen" },
+                overall_confidence: { type: "number", description: "Övergripande säkerhet 0-100" },
+                notes: { type: "string", description: "Övergripande anteckningar" },
               },
               required: ["stands", "overall_confidence"],
-              additionalProperties: false,
             },
           },
         },
@@ -434,7 +397,6 @@ serve(async (req) => {
     if (!pdfResp.ok) throw new Error("Could not download PDF");
 
     const pdfBuffer = await pdfResp.arrayBuffer();
-
     const base64Pdf = bufferToBase64(pdfBuffer);
     const aiResponse = await callExtractionAI(LOVABLE_API_KEY, base64Pdf);
 
@@ -445,12 +407,8 @@ serve(async (req) => {
         .eq("id", importId)
         .eq("user_id", user.id);
 
-      if (status === 429) {
-        return jsonResponse({ error: "AI-tjänsten är tillfälligt överbelastad. Försök igen." }, 429);
-      }
-      if (status === 402) {
-        return jsonResponse({ error: "AI-krediter slut." }, 402);
-      }
+      if (status === 429) return jsonResponse({ error: "AI-tjänsten är tillfälligt överbelastad. Försök igen." }, 429);
+      if (status === 402) return jsonResponse({ error: "AI-krediter slut." }, 402);
       throw new Error(`AI gateway error: ${status}`);
     }
 
@@ -465,7 +423,7 @@ serve(async (req) => {
       throw new Error("No tool call in AI response");
     }
 
-    const parsed = enrichParsedResult(JSON.parse(toolCall.function.arguments), "");
+    const parsed = enrichParsedResult(JSON.parse(toolCall.function.arguments));
 
     const { error: updateError } = await (adminClient.from("forest_plan_imports") as any)
       .update({
