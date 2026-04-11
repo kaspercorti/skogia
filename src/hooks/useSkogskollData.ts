@@ -18,6 +18,7 @@ export type Stand = {
   area_ha: number;
   age: number | null;
   volume_m3sk: number | null;
+  volume_per_ha: number | null;
   site_index: string | null;
   estimated_value: number | null;
   growth_rate_percent: number | null;
@@ -31,6 +32,26 @@ export type Stand = {
   planned_action: string | null;
   planned_year: number | null;
   notes: string | null;
+  parcel_number: string | null;
+  layer: string | null;
+  species_breakdown: any[] | null;
+  alternative_action: string | null;
+  timing_code: string | null;
+  removal_percent: number | null;
+  removal_volume_m3sk: number | null;
+  vegetation_type: string | null;
+  moisture_class: string | null;
+  terrain_type: string | null;
+  driving_conditions: string | null;
+  slope_info: string | null;
+  gyl_values: string | null;
+  production_goal: string | null;
+  general_comment: string | null;
+  action_comment: string | null;
+  special_values: string | null;
+  raw_description_text: string | null;
+  raw_full_text: string | null;
+  field_confidence_map: Record<string, string> | null;
 };
 
 export type ForestActivity = {
