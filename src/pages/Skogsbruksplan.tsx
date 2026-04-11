@@ -56,7 +56,7 @@ export default function Skogsbruksplan() {
     property_id: "", stand_id: "", type: "", custom_type: "", planned_date: "",
     estimated_income: "", estimated_cost: "", notes: "",
     has_subsidy: false, subsidy_type: "", subsidy_amount: "", subsidy_status: "planned", subsidy_date: "", subsidy_notes: "",
-    harvested_volume_m3sk: "", sold_volume_m3sk: "", price_per_m3sk: "", total_revenue: "",
+    harvested_volume_m3sk: "", sold_volume_m3sk: "", price_per_m3sk: "", total_revenue: "", cost_per_m3sk: "",
     is_completed: false, completed_date: "", affects_forest_plan: true,
   };
   const [newAct, setNewAct] = useState(emptyAct);
