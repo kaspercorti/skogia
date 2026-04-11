@@ -53,6 +53,9 @@ export default function Skogsbruksplan() {
   const [actDialogOpen, setActDialogOpen] = useState(false);
   const [editStandDialogOpen, setEditStandDialogOpen] = useState(false);
   const [editStandId, setEditStandId] = useState<string | null>(null);
+  const [editActDialogOpen, setEditActDialogOpen] = useState(false);
+  const [editActId, setEditActId] = useState<string | null>(null);
+  const [editAct, setEditAct] = useState<ActivityFormData>(emptyActivityForm);
 
   // New property form
   const [newProp, setNewProp] = useState({ name: "", municipality: "", total_area_ha: "", productive_forest_ha: "" });
