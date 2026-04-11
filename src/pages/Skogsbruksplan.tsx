@@ -35,7 +35,16 @@ export default function Skogsbruksplan() {
   // New property form
   const [newProp, setNewProp] = useState({ name: "", municipality: "", total_area_ha: "", productive_forest_ha: "" });
   // New stand form
-  const [newStand, setNewStand] = useState({ property_id: "", name: "", tree_species: "", area_ha: "", age: "", volume_m3sk: "", estimated_value: "", growth_rate_percent: "", planned_action: "", planned_year: "", notes: "" });
+  const emptyStand = {
+    property_id: "", name: "", tree_species: "", area_ha: "", age: "", volume_m3sk: "", volume_per_ha: "",
+    estimated_value: "", growth_rate_percent: "", planned_action: "", planned_year: "", notes: "",
+    huggningsklass: "", site_index: "", mean_diameter_cm: "", mean_height_m: "", goal_class: "",
+    basal_area_m2: "", annual_growth_m3sk: "", description: "", parcel_number: "", layer: "",
+    vegetation_type: "", moisture_class: "", terrain_type: "", driving_conditions: "", slope_info: "",
+    gyl_values: "", alternative_action: "", timing_code: "", removal_percent: "", removal_volume_m3sk: "",
+    production_goal: "", general_comment: "", action_comment: "", special_values: "",
+  };
+  const [newStand, setNewStand] = useState(emptyStand);
   // New activity form
   const [newAct, setNewAct] = useState({ property_id: "", stand_id: "", type: "", planned_date: "", estimated_income: "", estimated_cost: "", notes: "" });
 
