@@ -298,6 +298,25 @@ export default function Skogsbruksplan() {
     setActDialogOpen(false);
   };
 
+  const handleDeleteActivity = async (activityId: string) => {
+    const { error } = await supabase.from("forest_activities").delete().eq("id", activityId);
+    if (error) { toast.error("Kunde inte ta bort: " + error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
+    toast.success("Aktivitet borttagen");
+  };
+
+  const handleToggleActivityStatus = async (activity: typeof activities[0]) => {
+    const nowCompleted = !activity.is_completed;
+    const { error } = await supabase.from("forest_activities").update({
+      is_completed: nowCompleted,
+      status: nowCompleted ? "completed" : "planned",
+      completed_date: nowCompleted ? new Date().toISOString().slice(0, 10) : null,
+    }).eq("id", activity.id);
+    if (error) { toast.error("Kunde inte uppdatera: " + error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
+    toast.success(nowCompleted ? "Aktivitet markerad som genomförd" : "Aktivitet markerad som planerad");
+  };
+
   const selectedStandPanel = selected ? (() => {
     const propName = properties.find(p => p.id === selected.property_id)?.name || "";
     const standActivities = activities.filter(a => a.stand_id === selected.id);
