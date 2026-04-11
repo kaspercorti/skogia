@@ -1039,7 +1039,7 @@ export default function Skogsbruksplan() {
       
 
       {/* Avdelningsbeskrivning - Collapsible */}
-      <CollapsibleSection title="Avdelningsbeskrivning" icon={<Trees className="h-5 w-5 text-primary" />}>
+      <CollapsibleSection title="Avdelningsbeskrivning" icon={<Trees className="h-5 w-5 text-primary" />} defaultOpen>
         <div className="rounded-xl border border-border bg-card overflow-hidden overflow-x-auto">
           <Table>
             <TableHeader>
