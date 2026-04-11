@@ -231,6 +231,8 @@ export default function Skogsbruksplan() {
           <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">Skogsbruksplan</h1>
         </div>
         <div className="flex flex-wrap gap-2">
+          {/* Import forest plan */}
+          <ForestPlanImport properties={properties} />
           {/* Add Property Dialog */}
           <Dialog open={propDialogOpen} onOpenChange={setPropDialogOpen}>
             <DialogTrigger asChild>
