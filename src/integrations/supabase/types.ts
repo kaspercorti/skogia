@@ -346,6 +346,36 @@ export type Database = {
           },
         ]
       }
+      loss_carry_forwards: {
+        Row: {
+          created_at: string
+          id: string
+          original_amount: number
+          remaining_amount: number
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          original_amount?: number
+          remaining_amount?: number
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          original_amount?: number
+          remaining_amount?: number
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       properties: {
         Row: {
           created_at: string
