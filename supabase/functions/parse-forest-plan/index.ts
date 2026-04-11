@@ -36,11 +36,6 @@ type ParsedForestPlan = {
   notes?: string | null;
 };
 
-type PdfTextItem = {
-  str?: string;
-  transform?: number[];
-  width?: number;
-};
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
