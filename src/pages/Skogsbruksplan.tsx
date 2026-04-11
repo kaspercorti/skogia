@@ -892,13 +892,27 @@ export default function Skogsbruksplan() {
                       <Input type="number" placeholder="0" value={newAct.estimated_cost} onChange={e => setNewAct({ ...newAct, estimated_cost: e.target.value })} />
                     </div>
                   </div>
-                  {(Number(newAct.estimated_income) > 0 || Number(newAct.estimated_cost) > 0) && (
-                    <div className="rounded-md bg-muted/50 p-2 text-xs space-y-0.5">
-                      <div className="flex justify-between"><span className="text-muted-foreground">Intäkt:</span><span className="text-foreground">{(Number(newAct.estimated_income) || 0).toLocaleString("sv-SE")} kr</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Kostnad:</span><span className="text-destructive">−{(Number(newAct.estimated_cost) || 0).toLocaleString("sv-SE")} kr</span></div>
-                      <div className="flex justify-between border-t border-border pt-0.5 font-semibold"><span className="text-muted-foreground">Netto:</span><span className={((Number(newAct.estimated_income) || 0) - (Number(newAct.estimated_cost) || 0)) >= 0 ? "text-primary" : "text-destructive"}>{((Number(newAct.estimated_income) || 0) - (Number(newAct.estimated_cost) || 0)).toLocaleString("sv-SE")} kr</span></div>
-                    </div>
-                  )}
+                  {(Number(newAct.estimated_income) > 0 || Number(newAct.estimated_cost) > 0) && (() => {
+                    const income = Number(newAct.estimated_income) || 0;
+                    const cost = Number(newAct.estimated_cost) || 0;
+                    const vol = Number(newAct.harvested_volume_m3sk) || 0;
+                    const netto = income - cost;
+                    const costPerM3 = vol > 0 ? cost / vol : null;
+                    const nettoPerM3 = vol > 0 ? netto / vol : null;
+                    return (
+                      <div className="rounded-md bg-muted/50 p-2 text-xs space-y-0.5">
+                        <div className="flex justify-between"><span className="text-muted-foreground">Intäkt:</span><span className="text-foreground">{income.toLocaleString("sv-SE")} kr</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Kostnad:</span><span className="text-destructive">−{cost.toLocaleString("sv-SE")} kr</span></div>
+                        {costPerM3 !== null && (
+                          <div className="flex justify-between"><span className="text-muted-foreground">Kostnad per m³sk:</span><span className="text-foreground">{Math.round(costPerM3).toLocaleString("sv-SE")} kr/m³sk</span></div>
+                        )}
+                        <div className="flex justify-between border-t border-border pt-0.5 font-semibold"><span className="text-muted-foreground">Netto:</span><span className={netto >= 0 ? "text-primary" : "text-destructive"}>{netto.toLocaleString("sv-SE")} kr</span></div>
+                        {nettoPerM3 !== null && (
+                          <div className="flex justify-between font-semibold"><span className="text-muted-foreground">Netto per m³sk:</span><span className={nettoPerM3 >= 0 ? "text-primary" : "text-destructive"}>{Math.round(nettoPerM3).toLocaleString("sv-SE")} kr/m³sk</span></div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Bidrag / Stöd */}
