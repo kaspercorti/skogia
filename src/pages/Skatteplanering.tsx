@@ -69,6 +69,8 @@ interface SimScenario {
   totalIncome: number;
   totalCost: number;
   resultat: number;
+  lossUsed: number;
+  taxableResultat: number;
   tax: number;
   netAfterTax: number;
 }
