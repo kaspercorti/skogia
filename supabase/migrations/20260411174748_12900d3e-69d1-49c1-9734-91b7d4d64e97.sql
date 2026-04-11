@@ -1,0 +1,23 @@
+
+ALTER TABLE public.stands
+  ADD COLUMN IF NOT EXISTS vegetation_type text,
+  ADD COLUMN IF NOT EXISTS moisture_class text,
+  ADD COLUMN IF NOT EXISTS terrain_type text,
+  ADD COLUMN IF NOT EXISTS driving_conditions text,
+  ADD COLUMN IF NOT EXISTS slope_info text,
+  ADD COLUMN IF NOT EXISTS gyl_values text,
+  ADD COLUMN IF NOT EXISTS species_breakdown jsonb DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS alternative_action text,
+  ADD COLUMN IF NOT EXISTS timing_code text,
+  ADD COLUMN IF NOT EXISTS removal_percent numeric,
+  ADD COLUMN IF NOT EXISTS removal_volume_m3sk numeric,
+  ADD COLUMN IF NOT EXISTS volume_per_ha numeric,
+  ADD COLUMN IF NOT EXISTS production_goal text,
+  ADD COLUMN IF NOT EXISTS general_comment text,
+  ADD COLUMN IF NOT EXISTS action_comment text,
+  ADD COLUMN IF NOT EXISTS special_values text,
+  ADD COLUMN IF NOT EXISTS raw_description_text text,
+  ADD COLUMN IF NOT EXISTS raw_full_text text,
+  ADD COLUMN IF NOT EXISTS field_confidence_map jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS parcel_number text,
+  ADD COLUMN IF NOT EXISTS layer text;

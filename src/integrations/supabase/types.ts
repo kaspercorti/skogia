@@ -567,76 +567,139 @@ export type Database = {
       }
       stands: {
         Row: {
+          action_comment: string | null
           age: number | null
+          alternative_action: string | null
           annual_growth_m3sk: number | null
           area_ha: number
           basal_area_m2: number | null
           created_at: string
           description: string | null
+          driving_conditions: string | null
           estimated_value: number | null
+          field_confidence_map: Json | null
+          general_comment: string | null
           goal_class: string | null
           growth_rate_percent: number | null
+          gyl_values: string | null
           huggningsklass: string | null
           id: string
+          layer: string | null
           mean_diameter_cm: number | null
           mean_height_m: number | null
+          moisture_class: string | null
           name: string
           notes: string | null
+          parcel_number: string | null
           planned_action: string | null
           planned_year: number | null
+          production_goal: string | null
           property_id: string
+          raw_description_text: string | null
+          raw_full_text: string | null
+          removal_percent: number | null
+          removal_volume_m3sk: number | null
           site_index: string | null
+          slope_info: string | null
+          special_values: string | null
+          species_breakdown: Json | null
+          terrain_type: string | null
+          timing_code: string | null
           tree_species: string | null
           updated_at: string
+          vegetation_type: string | null
           volume_m3sk: number | null
+          volume_per_ha: number | null
         }
         Insert: {
+          action_comment?: string | null
           age?: number | null
+          alternative_action?: string | null
           annual_growth_m3sk?: number | null
           area_ha?: number
           basal_area_m2?: number | null
           created_at?: string
           description?: string | null
+          driving_conditions?: string | null
           estimated_value?: number | null
+          field_confidence_map?: Json | null
+          general_comment?: string | null
           goal_class?: string | null
           growth_rate_percent?: number | null
+          gyl_values?: string | null
           huggningsklass?: string | null
           id?: string
+          layer?: string | null
           mean_diameter_cm?: number | null
           mean_height_m?: number | null
+          moisture_class?: string | null
           name: string
           notes?: string | null
+          parcel_number?: string | null
           planned_action?: string | null
           planned_year?: number | null
+          production_goal?: string | null
           property_id: string
+          raw_description_text?: string | null
+          raw_full_text?: string | null
+          removal_percent?: number | null
+          removal_volume_m3sk?: number | null
           site_index?: string | null
+          slope_info?: string | null
+          special_values?: string | null
+          species_breakdown?: Json | null
+          terrain_type?: string | null
+          timing_code?: string | null
           tree_species?: string | null
           updated_at?: string
+          vegetation_type?: string | null
           volume_m3sk?: number | null
+          volume_per_ha?: number | null
         }
         Update: {
+          action_comment?: string | null
           age?: number | null
+          alternative_action?: string | null
           annual_growth_m3sk?: number | null
           area_ha?: number
           basal_area_m2?: number | null
           created_at?: string
           description?: string | null
+          driving_conditions?: string | null
           estimated_value?: number | null
+          field_confidence_map?: Json | null
+          general_comment?: string | null
           goal_class?: string | null
           growth_rate_percent?: number | null
+          gyl_values?: string | null
           huggningsklass?: string | null
           id?: string
+          layer?: string | null
           mean_diameter_cm?: number | null
           mean_height_m?: number | null
+          moisture_class?: string | null
           name?: string
           notes?: string | null
+          parcel_number?: string | null
           planned_action?: string | null
           planned_year?: number | null
+          production_goal?: string | null
           property_id?: string
+          raw_description_text?: string | null
+          raw_full_text?: string | null
+          removal_percent?: number | null
+          removal_volume_m3sk?: number | null
           site_index?: string | null
+          slope_info?: string | null
+          special_values?: string | null
+          species_breakdown?: Json | null
+          terrain_type?: string | null
+          timing_code?: string | null
           tree_species?: string | null
           updated_at?: string
+          vegetation_type?: string | null
           volume_m3sk?: number | null
+          volume_per_ha?: number | null
         }
         Relationships: [
           {
