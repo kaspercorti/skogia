@@ -168,43 +168,64 @@ export type Database = {
       forest_activities: {
         Row: {
           created_at: string
+          custom_type: string | null
           estimated_cost: number
           estimated_income: number
           estimated_net: number
+          has_subsidy: boolean
           id: string
           notes: string | null
           planned_date: string | null
           property_id: string
           stand_id: string | null
           status: string
+          subsidy_amount: number
+          subsidy_date: string | null
+          subsidy_notes: string | null
+          subsidy_status: string | null
+          subsidy_type: string | null
           type: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          custom_type?: string | null
           estimated_cost?: number
           estimated_income?: number
           estimated_net?: number
+          has_subsidy?: boolean
           id?: string
           notes?: string | null
           planned_date?: string | null
           property_id: string
           stand_id?: string | null
           status?: string
+          subsidy_amount?: number
+          subsidy_date?: string | null
+          subsidy_notes?: string | null
+          subsidy_status?: string | null
+          subsidy_type?: string | null
           type: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          custom_type?: string | null
           estimated_cost?: number
           estimated_income?: number
           estimated_net?: number
+          has_subsidy?: boolean
           id?: string
           notes?: string | null
           planned_date?: string | null
           property_id?: string
           stand_id?: string | null
           status?: string
+          subsidy_amount?: number
+          subsidy_date?: string | null
+          subsidy_notes?: string | null
+          subsidy_status?: string | null
+          subsidy_type?: string | null
           type?: string
           updated_at?: string
         }
