@@ -1,4 +1,4 @@
-import { Wallet, TrendingUp, TreePine, Receipt, Calculator, CalendarClock, Zap, ArrowRight, ChevronRight, AlertTriangle, Clock } from "lucide-react";
+import { Wallet, TrendingUp, TreePine, Receipt, Calculator, CalendarClock, Zap, ArrowRight, ChevronRight, AlertTriangle, Clock, TrendingDown } from "lucide-react";
 import StatCard from "@/components/dashboard/StatCard";
 import CashFlowChart from "@/components/dashboard/CashFlowChart";
 import ForestOverview from "@/components/dashboard/ForestOverview";
@@ -9,6 +9,7 @@ import {
   useBankAccounts, useTaxAccounts,
   fmt, calcSaldo, calcResultat, calcTotalArea, calcOpenInvoices, calcOverdueInvoices, calcUpcomingIncome, calcEstimatedTax,
 } from "@/hooks/useSkogskollData";
+import { useLossCarryForwards, applyLossCarryForwards } from "@/hooks/useLossCarryForwards";
 
 export default function Index() {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ export default function Index() {
   const { data: activities = [] } = useForestActivities();
   const { data: bankAccounts = [] } = useBankAccounts();
   const { data: taxAccounts = [] } = useTaxAccounts();
+  const { data: lossCarryForwards = [] } = useLossCarryForwards();
 
   const year = new Date().getFullYear();
   const saldo = bankAccounts.reduce((s, a) => s + a.current_balance, 0);
@@ -27,7 +29,11 @@ export default function Index() {
   const openInvoiceAmount = calcOpenInvoices(invoices);
   const overdueInvoices = calcOverdueInvoices(invoices);
   const upcomingIncome = calcUpcomingIncome(activities);
-  const estimatedTax = calcEstimatedTax(resultat);
+
+  // Apply loss carry-forwards to get correct tax estimate
+  const lossResult = applyLossCarryForwards(resultat, lossCarryForwards);
+  const estimatedTax = calcEstimatedTax(lossResult.taxableResultat);
+  const totalRemainingLoss = lossResult.remainingLosses;
 
   // Find biggest planned activity for decision banner
   const biggestActivity = activities
@@ -73,6 +79,9 @@ export default function Index() {
           <StatCard icon={Receipt} title="Öppna fakturor" value={fmt(openInvoiceAmount)} change={`${invoices.filter(i => i.status === "unpaid" || i.status === "overdue").length} obetalda`} changeType="negative" delay={150} />
           <StatCard icon={Calculator} title="Skatt (prognos)" value={fmt(estimatedTax)} change={`Beräknad ${year}`} changeType="neutral" delay={200} />
           <StatCard icon={CalendarClock} title="Kommande intäkt" value={fmt(upcomingIncome)} change={`${activities.filter(a => a.status === "planned").length} planerade`} changeType="positive" delay={250} />
+          {totalRemainingLoss > 0 && (
+            <StatCard icon={TrendingDown} title="Underskott" value={fmt(totalRemainingLoss)} change={lossResult.lossUsed > 0 ? `${fmt(lossResult.lossUsed)} används ${year}` : "Kvar att använda"} changeType="neutral" delay={300} />
+          )}
         </div>
 
         {/* Action cards row */}
