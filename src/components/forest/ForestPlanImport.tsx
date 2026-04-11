@@ -23,6 +23,13 @@ interface ExtractedStand {
   age: number | null;
   volume_m3sk: number | null;
   site_index: string | null;
+  huggningsklass: string | null;
+  mean_diameter_cm: number | null;
+  mean_height_m: number | null;
+  goal_class: string | null;
+  basal_area_m2: number | null;
+  annual_growth_m3sk: number | null;
+  description: string | null;
   planned_action: string | null;
   planned_year: number | null;
   notes: string | null;
@@ -152,9 +159,15 @@ export default function ForestPlanImport({ properties }: ForestPlanImportProps) 
         age: s.age || null,
         volume_m3sk: s.volume_m3sk || null,
         site_index: s.site_index || null,
+        huggningsklass: s.huggningsklass || null,
+        mean_diameter_cm: s.mean_diameter_cm || null,
+        mean_height_m: s.mean_height_m || null,
+        goal_class: s.goal_class || null,
+        basal_area_m2: s.basal_area_m2 || null,
+        annual_growth_m3sk: s.annual_growth_m3sk || null,
+        notes: [s.description, s.notes].filter(Boolean).join(". ") || null,
         planned_action: s.planned_action || null,
         planned_year: s.planned_year || null,
-        notes: s.notes || null,
       }));
 
       const { data: createdStands, error: standErr } = await supabase
@@ -330,12 +343,18 @@ export default function ForestPlanImport({ properties }: ForestPlanImportProps) 
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="min-w-[100px]">Avdelning</TableHead>
+                        <TableHead className="min-w-[80px]">Avdelning</TableHead>
                         <TableHead>Trädslag</TableHead>
                         <TableHead className="text-right">Areal (ha)</TableHead>
                         <TableHead className="text-right">Ålder</TableHead>
-                        <TableHead className="text-right">Volym (m³sk)</TableHead>
+                        <TableHead>Hkl</TableHead>
                         <TableHead>Bonitet</TableHead>
+                        <TableHead className="text-right">Volym (m³sk)</TableHead>
+                        <TableHead className="text-right">Diam (cm)</TableHead>
+                        <TableHead className="text-right">Höjd (m)</TableHead>
+                        <TableHead>Målklass</TableHead>
+                        <TableHead className="text-right">G-yta (m²)</TableHead>
+                        <TableHead className="text-right">Tillväxt</TableHead>
                         <TableHead>Åtgärd</TableHead>
                         <TableHead>År</TableHead>
                         <TableHead>Säkerhet</TableHead>
@@ -347,30 +366,44 @@ export default function ForestPlanImport({ properties }: ForestPlanImportProps) 
                         <TableRow key={idx} className={s.confidence !== null && s.confidence < 50 ? "bg-destructive/5" : ""}>
                           <TableCell>
                             {editingIdx === idx ? (
-                              <Input value={s.name} onChange={e => updateStand(idx, "name", e.target.value)} className="h-7 text-xs w-24" />
+                              <Input value={s.name} onChange={e => updateStand(idx, "name", e.target.value)} className="h-7 text-xs w-20" />
                             ) : (
                               <span className="text-sm font-medium text-card-foreground">{s.name || "—"}</span>
                             )}
                           </TableCell>
                           <TableCell>
                             {editingIdx === idx ? (
-                              <Input value={s.tree_species || ""} onChange={e => updateStand(idx, "tree_species", e.target.value)} className="h-7 text-xs w-20" />
+                              <Input value={s.tree_species || ""} onChange={e => updateStand(idx, "tree_species", e.target.value)} className="h-7 text-xs w-16" />
                             ) : (
                               <span className="text-sm text-muted-foreground">{s.tree_species || "—"}</span>
                             )}
                           </TableCell>
                           <TableCell className="text-right">
                             {editingIdx === idx ? (
-                              <Input type="number" value={s.area_ha ?? ""} onChange={e => updateStand(idx, "area_ha", e.target.value ? Number(e.target.value) : null)} className="h-7 text-xs w-16" />
+                              <Input type="number" value={s.area_ha ?? ""} onChange={e => updateStand(idx, "area_ha", e.target.value ? Number(e.target.value) : null)} className="h-7 text-xs w-14" />
                             ) : (
                               <span className="text-sm tabular-nums text-card-foreground">{s.area_ha ?? "—"}</span>
                             )}
                           </TableCell>
                           <TableCell className="text-right">
                             {editingIdx === idx ? (
-                              <Input type="number" value={s.age ?? ""} onChange={e => updateStand(idx, "age", e.target.value ? Number(e.target.value) : null)} className="h-7 text-xs w-16" />
+                              <Input type="number" value={s.age ?? ""} onChange={e => updateStand(idx, "age", e.target.value ? Number(e.target.value) : null)} className="h-7 text-xs w-14" />
                             ) : (
                               <span className="text-sm tabular-nums text-muted-foreground">{s.age ?? "—"}</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {editingIdx === idx ? (
+                              <Input value={s.huggningsklass || ""} onChange={e => updateStand(idx, "huggningsklass", e.target.value)} className="h-7 text-xs w-12" />
+                            ) : (
+                              <span className="text-sm text-muted-foreground">{s.huggningsklass || "—"}</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {editingIdx === idx ? (
+                              <Input value={s.site_index || ""} onChange={e => updateStand(idx, "site_index", e.target.value)} className="h-7 text-xs w-14" />
+                            ) : (
+                              <span className="text-sm text-muted-foreground">{s.site_index || "—"}</span>
                             )}
                           </TableCell>
                           <TableCell className="text-right">
@@ -380,11 +413,39 @@ export default function ForestPlanImport({ properties }: ForestPlanImportProps) 
                               <span className="text-sm tabular-nums text-card-foreground">{s.volume_m3sk ?? "—"}</span>
                             )}
                           </TableCell>
+                          <TableCell className="text-right">
+                            {editingIdx === idx ? (
+                              <Input type="number" value={s.mean_diameter_cm ?? ""} onChange={e => updateStand(idx, "mean_diameter_cm", e.target.value ? Number(e.target.value) : null)} className="h-7 text-xs w-14" />
+                            ) : (
+                              <span className="text-sm tabular-nums text-muted-foreground">{s.mean_diameter_cm ?? "—"}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {editingIdx === idx ? (
+                              <Input type="number" value={s.mean_height_m ?? ""} onChange={e => updateStand(idx, "mean_height_m", e.target.value ? Number(e.target.value) : null)} className="h-7 text-xs w-14" />
+                            ) : (
+                              <span className="text-sm tabular-nums text-muted-foreground">{s.mean_height_m ?? "—"}</span>
+                            )}
+                          </TableCell>
                           <TableCell>
                             {editingIdx === idx ? (
-                              <Input value={s.site_index || ""} onChange={e => updateStand(idx, "site_index", e.target.value)} className="h-7 text-xs w-16" />
+                              <Input value={s.goal_class || ""} onChange={e => updateStand(idx, "goal_class", e.target.value)} className="h-7 text-xs w-12" />
                             ) : (
-                              <span className="text-sm text-muted-foreground">{s.site_index || "—"}</span>
+                              <span className="text-sm text-muted-foreground">{s.goal_class || "—"}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {editingIdx === idx ? (
+                              <Input type="number" value={s.basal_area_m2 ?? ""} onChange={e => updateStand(idx, "basal_area_m2", e.target.value ? Number(e.target.value) : null)} className="h-7 text-xs w-14" />
+                            ) : (
+                              <span className="text-sm tabular-nums text-muted-foreground">{s.basal_area_m2 ?? "—"}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {editingIdx === idx ? (
+                              <Input type="number" value={s.annual_growth_m3sk ?? ""} onChange={e => updateStand(idx, "annual_growth_m3sk", e.target.value ? Number(e.target.value) : null)} className="h-7 text-xs w-14" />
+                            ) : (
+                              <span className="text-sm tabular-nums text-muted-foreground">{s.annual_growth_m3sk ?? "—"}</span>
                             )}
                           </TableCell>
                           <TableCell>

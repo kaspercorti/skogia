@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as pdfjsLib from "https://esm.sh/pdfjs-dist@4.8.69/legacy/build/pdf.mjs";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,10 +8,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MAX_EXTRACTED_TEXT_LENGTH = 120_000;
-const MIN_STRUCTURED_TEXT_LENGTH = 250;
-const Y_TOLERANCE = 3;
-const COLUMN_GAP_THRESHOLD = 10;
 const SECTION_CONTEXT_RADIUS = 16;
 
 type ExtractedStand = {
@@ -21,6 +17,13 @@ type ExtractedStand = {
   age: number | null;
   volume_m3sk: number | null;
   site_index: string | null;
+  huggningsklass: string | null;
+  mean_diameter_cm: number | null;
+  mean_height_m: number | null;
+  goal_class: string | null;
+  basal_area_m2: number | null;
+  annual_growth_m3sk: number | null;
+  description: string | null;
   planned_action: string | null;
   planned_year: number | null;
   notes: string | null;
@@ -33,11 +36,6 @@ type ParsedForestPlan = {
   notes?: string | null;
 };
 
-type PdfTextItem = {
-  str?: string;
-  transform?: number[];
-  width?: number;
-};
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -94,6 +92,13 @@ function normalizeStand(raw: Record<string, unknown>): ExtractedStand {
     age: toIntegerOrNull(raw.age),
     volume_m3sk: parseNumber(raw.volume_m3sk),
     site_index: toStringOrNull(raw.site_index),
+    huggningsklass: toStringOrNull(raw.huggningsklass),
+    mean_diameter_cm: parseNumber(raw.mean_diameter_cm),
+    mean_height_m: parseNumber(raw.mean_height_m),
+    goal_class: toStringOrNull(raw.goal_class),
+    basal_area_m2: parseNumber(raw.basal_area_m2),
+    annual_growth_m3sk: parseNumber(raw.annual_growth_m3sk),
+    description: toStringOrNull(raw.description),
     planned_action: toStringOrNull(raw.planned_action),
     planned_year: toIntegerOrNull(raw.planned_year),
     notes: toStringOrNull(raw.notes),
@@ -113,73 +118,6 @@ function bufferToBase64(buffer: ArrayBuffer) {
   return btoa(parts.join(""));
 }
 
-async function extractTextWithStructure(page: { getTextContent: () => Promise<{ items: unknown[] }> }) {
-  const content = await page.getTextContent();
-  const lineMap = new Map<number, Array<{ str: string; x: number; width: number }>>();
-
-  for (const rawItem of content.items as PdfTextItem[]) {
-    const str = typeof rawItem.str === "string" ? rawItem.str.replace(/\s+/g, " ").trim() : "";
-    if (!str) continue;
-
-    const x = Array.isArray(rawItem.transform) ? rawItem.transform[4] ?? 0 : 0;
-    const yRaw = Array.isArray(rawItem.transform) ? rawItem.transform[5] ?? 0 : 0;
-    const y = Math.round(yRaw / Y_TOLERANCE) * Y_TOLERANCE;
-
-    if (!lineMap.has(y)) lineMap.set(y, []);
-    lineMap.get(y)?.push({
-      str,
-      x,
-      width: typeof rawItem.width === "number" ? rawItem.width : str.length * 5,
-    });
-  }
-
-  return Array.from(lineMap.entries())
-    .sort((a, b) => b[0] - a[0])
-    .map(([, items]) => {
-      items.sort((a, b) => a.x - b.x);
-      let line = "";
-
-      for (let index = 0; index < items.length; index += 1) {
-        const item = items[index];
-        if (index > 0) {
-          const previous = items[index - 1];
-          const gap = item.x - (previous.x + previous.width);
-          line += gap > COLUMN_GAP_THRESHOLD ? "  " : " ";
-        }
-        line += item.str;
-      }
-
-      return line.replace(/\s{3,}/g, "  ").trim();
-    })
-    .filter(Boolean)
-    .join("\n");
-}
-
-async function extractStructuredPdfText(pdfBuffer: ArrayBuffer) {
-  const pdf = await pdfjsLib.getDocument({
-    data: new Uint8Array(pdfBuffer),
-    useWorkerFetch: false,
-    isEvalSupported: false,
-    disableFontFace: true,
-    useSystemFonts: true,
-  }).promise;
-
-  const pages: string[] = [];
-  try {
-    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-      const page = await pdf.getPage(pageNumber);
-      const pageText = await extractTextWithStructure(page);
-      if (pageText.trim()) {
-        pages.push(`--- Sida ${pageNumber} ---\n${pageText}`);
-      }
-    }
-  } finally {
-    pdf.cleanup();
-    pdf.destroy();
-  }
-
-  return pages.join("\n\n").slice(0, MAX_EXTRACTED_TEXT_LENGTH);
-}
 
 function buildStandMatcher(name: string) {
   const rawName = name.trim();
@@ -330,8 +268,8 @@ function enrichParsedResult(rawParsed: Record<string, unknown>, structuredText: 
   };
 }
 
-async function callExtractionAI(apiKey: string, structuredText: string, base64Pdf: string) {
-  const hasStructuredText = structuredText.trim().length >= MIN_STRUCTURED_TEXT_LENGTH;
+async function callExtractionAI(apiKey: string, base64Pdf: string) {
+  
 
   return await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -344,39 +282,41 @@ async function callExtractionAI(apiKey: string, structuredText: string, base64Pd
       messages: [
         {
           role: "system",
-          content: `Du är en expert på svenska skogsbruksplaner. Din uppgift är att läsa av avdelningsbeskrivningar från en skogsbruksplan och extrahera BARA de viktigaste uppgifterna per avdelning/bestånd.
+          content: `Du är en expert på svenska skogsbruksplaner. Din uppgift är att läsa av avdelningsbeskrivningar från en skogsbruksplan och extrahera uppgifterna per avdelning/bestånd.
 
-Fokusera ENBART på:
-- Avdelningsnummer eller namn
+Fält att extrahera per avdelning:
+- Avdelningsnummer eller namn (Avd nr)
 - Huvudträdslag (tall, gran, björk, löv, blandskog etc.)
 - Areal i hektar
-- Ålder (medelålder eller dominerande ålder)
-- Virkesförråd/volym (m³sk)
-- Bonitet/ståndortsindex (t.ex. T24, G28, B20)
-- Planerad/föreslagen åtgärd (slutavverkning, gallring, röjning, plantering, ingen åtgärd)
-- Planerat år eller tidsperiod för åtgärden
-- Viktiga anteckningar (t.ex. stormskador, speciella hänsyn)
+- Ålder (medelålder, åld, dominantålder)
+- Huggningsklass (Hkl) – t.ex. K1, K2, S1, S2, S3, R1, R2, E1, E2, E3
+- Ståndortsindex/Bonitet (SI) – t.ex. T24, G28, B20
+- Virkesförråd/volym (m³sk) – total volym per avdelning
+- Medeldiameter (cm) – medeldiam
+- Medelhöjd (m)
+- Målklass – t.ex. PG, NS, NO, K, PF
+- Grundyta (G-yta) i m²
+- Årlig tillväxt (m³sk)
+- Beskrivning – fri text om beståndet
+- Åtgärd – planerad/föreslagen åtgärd
+- År/När – planerat år eller period för åtgärden
+- Uttag (m³sk) – planerat uttag vid åtgärd
+- Anteckningar – övriga viktiga noteringar
 
 VIKTIGT:
 - Läs främst av avdelningsbeskrivningen, inte övriga sammanställningar
-- Ålder kan stå som "Ålder", "Åld", "medelålder" eller liknande
+- Kolumnrubrikerna kan vara förkortade: "Åld" = ålder, "SI" = ståndortsindex, "Hkl" = huggningsklass, "Med diam" = medeldiameter, "Med höjd" = medelhöjd
 - Om ett värde inte kan utläsas säkert, lämna det som null
 - Sätt confidence till lägre värde om du är osäker
-- Tolka INTE oviktiga detaljer
 - En avdelning kan ha blandträdslag – ange det dominerande
 - Svara BARA med det anropade verktyget`,
         },
-        hasStructuredText
-          ? {
-              role: "user",
-              content: `Här är strukturerad text extraherad från PDF:ens avdelningsbeskrivning. Rad- och kolumnstruktur är bevarad för att göra värden som ålder lättare att hitta. Extrahera de viktigaste uppgifterna per avdelning/bestånd och fyll i ålder när den står tydligt angiven.\n\n${structuredText}`,
-            }
-          : {
+        {
               role: "user",
               content: [
                 {
                   type: "text",
-                  text: "Läs av avdelningsbeskrivningen i denna skogsbruksplan. Extrahera de viktigaste uppgifterna per avdelning/bestånd.",
+                  text: "Läs av avdelningsbeskrivningen i denna skogsbruksplan. Extrahera ALLA uppgifter per avdelning/bestånd inklusive huggningsklass, medeldiameter, medelhöjd, målklass, grundyta och årlig tillväxt.",
                 },
                 {
                   type: "image_url",
@@ -403,10 +343,18 @@ VIKTIGT:
                       tree_species: { type: "string", description: "Huvudträdslag, t.ex. 'Tall', 'Gran', 'Björk'" },
                       area_ha: { type: "number", description: "Areal i hektar" },
                       age: { type: "number", description: "Ålder i år" },
-                      volume_m3sk: { type: "number", description: "Virkesförråd i m³sk" },
+                      volume_m3sk: { type: "number", description: "Virkesförråd i m³sk (total per avdelning)" },
                       site_index: { type: "string", description: "Bonitet/ståndortsindex, t.ex. 'T24', 'G28'" },
+                      huggningsklass: { type: "string", description: "Huggningsklass, t.ex. 'K1', 'S1', 'S2', 'S3', 'R1', 'R2', 'E1'" },
+                      mean_diameter_cm: { type: "number", description: "Medeldiameter i cm" },
+                      mean_height_m: { type: "number", description: "Medelhöjd i meter" },
+                      goal_class: { type: "string", description: "Målklass, t.ex. 'PG', 'NS', 'NO', 'K', 'PF'" },
+                      basal_area_m2: { type: "number", description: "Grundyta (G-yta) i m² per ha" },
+                      annual_growth_m3sk: { type: "number", description: "Årlig tillväxt i m³sk" },
+                      description: { type: "string", description: "Beskrivning av beståndet" },
                       planned_action: { type: "string", description: "Planerad åtgärd: slutavverkning, gallring, röjning, plantering, markberedning, ingen åtgärd" },
                       planned_year: { type: "number", description: "Planerat år för åtgärden" },
+                      harvest_volume_m3sk: { type: "number", description: "Planerat uttag i m³sk vid åtgärd" },
                       notes: { type: "string", description: "Viktiga anteckningar" },
                       confidence: { type: "number", description: "Säkerhet 0-100 på denna avdelnings data" },
                     },
@@ -487,15 +435,8 @@ serve(async (req) => {
 
     const pdfBuffer = await pdfResp.arrayBuffer();
 
-    let structuredText = "";
-    try {
-      structuredText = await extractStructuredPdfText(pdfBuffer);
-    } catch (error) {
-      console.error("Structured PDF extraction failed:", error);
-    }
-
     const base64Pdf = bufferToBase64(pdfBuffer);
-    const aiResponse = await callExtractionAI(LOVABLE_API_KEY, structuredText, base64Pdf);
+    const aiResponse = await callExtractionAI(LOVABLE_API_KEY, base64Pdf);
 
     if (!aiResponse.ok) {
       const status = aiResponse.status;
@@ -524,7 +465,7 @@ serve(async (req) => {
       throw new Error("No tool call in AI response");
     }
 
-    const parsed = enrichParsedResult(JSON.parse(toolCall.function.arguments), structuredText);
+    const parsed = enrichParsedResult(JSON.parse(toolCall.function.arguments), "");
 
     const { error: updateError } = await (adminClient.from("forest_plan_imports") as any)
       .update({

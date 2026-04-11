@@ -568,11 +568,18 @@ export type Database = {
       stands: {
         Row: {
           age: number | null
+          annual_growth_m3sk: number | null
           area_ha: number
+          basal_area_m2: number | null
           created_at: string
+          description: string | null
           estimated_value: number | null
+          goal_class: string | null
           growth_rate_percent: number | null
+          huggningsklass: string | null
           id: string
+          mean_diameter_cm: number | null
+          mean_height_m: number | null
           name: string
           notes: string | null
           planned_action: string | null
@@ -585,11 +592,18 @@ export type Database = {
         }
         Insert: {
           age?: number | null
+          annual_growth_m3sk?: number | null
           area_ha?: number
+          basal_area_m2?: number | null
           created_at?: string
+          description?: string | null
           estimated_value?: number | null
+          goal_class?: string | null
           growth_rate_percent?: number | null
+          huggningsklass?: string | null
           id?: string
+          mean_diameter_cm?: number | null
+          mean_height_m?: number | null
           name: string
           notes?: string | null
           planned_action?: string | null
@@ -602,11 +616,18 @@ export type Database = {
         }
         Update: {
           age?: number | null
+          annual_growth_m3sk?: number | null
           area_ha?: number
+          basal_area_m2?: number | null
           created_at?: string
+          description?: string | null
           estimated_value?: number | null
+          goal_class?: string | null
           growth_rate_percent?: number | null
+          huggningsklass?: string | null
           id?: string
+          mean_diameter_cm?: number | null
+          mean_height_m?: number | null
           name?: string
           notes?: string | null
           planned_action?: string | null
