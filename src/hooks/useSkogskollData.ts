@@ -65,6 +65,13 @@ export type ForestActivity = {
   estimated_net: number;
   status: string;
   notes: string | null;
+  has_subsidy: boolean;
+  subsidy_type: string | null;
+  subsidy_amount: number;
+  subsidy_status: string | null;
+  subsidy_date: string | null;
+  subsidy_notes: string | null;
+  custom_type: string | null;
 };
 
 export type Customer = {
