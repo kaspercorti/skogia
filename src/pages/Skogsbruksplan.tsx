@@ -487,7 +487,14 @@ export default function Skogsbruksplan() {
   })() : null;
 
   // Stands for activity form filtered by selected property
-  const standsForAct = newAct.property_id ? stands.filter(s => s.property_id === newAct.property_id) : [];
+  const standsForAct = useMemo(() => {
+    const filtered = newAct.property_id ? stands.filter(s => s.property_id === newAct.property_id) : [];
+    return [...filtered].sort((a, b) => {
+      const numA = parseInt(a.name.replace(/\D/g, '')) || 0;
+      const numB = parseInt(b.name.replace(/\D/g, '')) || 0;
+      return numA - numB;
+    });
+  }, [stands, newAct.property_id]);
 
   return (
     <main className="flex-1 p-4 md:p-8 overflow-auto">
