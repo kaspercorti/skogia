@@ -52,7 +52,12 @@ export default function Skogsbruksplan() {
   // Edit stand form
   const [editStand, setEditStand] = useState(emptyStand);
   // New activity form
-  const [newAct, setNewAct] = useState({ property_id: "", stand_id: "", type: "", planned_date: "", estimated_income: "", estimated_cost: "", notes: "" });
+  const emptyAct = {
+    property_id: "", stand_id: "", type: "", custom_type: "", planned_date: "",
+    estimated_income: "", estimated_cost: "", notes: "",
+    has_subsidy: false, subsidy_type: "", subsidy_amount: "", subsidy_status: "planned", subsidy_date: "", subsidy_notes: "",
+  };
+  const [newAct, setNewAct] = useState(emptyAct);
 
   const selected = stands.find(b => b.id === selectedId);
   const fmt = (n: number) => n.toLocaleString("sv-SE");
