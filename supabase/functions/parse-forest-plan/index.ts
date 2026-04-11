@@ -311,17 +311,12 @@ VIKTIGT:
 - En avdelning kan ha blandträdslag – ange det dominerande
 - Svara BARA med det anropade verktyget`,
         },
-        hasStructuredText
-          ? {
-              role: "user",
-              content: `Här är strukturerad text extraherad från PDF:ens avdelningsbeskrivning. Rad- och kolumnstruktur är bevarad för att göra värden som ålder lättare att hitta. Extrahera de viktigaste uppgifterna per avdelning/bestånd och fyll i ålder när den står tydligt angiven.\n\n${structuredText}`,
-            }
-          : {
+        {
               role: "user",
               content: [
                 {
                   type: "text",
-                  text: "Läs av avdelningsbeskrivningen i denna skogsbruksplan. Extrahera de viktigaste uppgifterna per avdelning/bestånd.",
+                  text: "Läs av avdelningsbeskrivningen i denna skogsbruksplan. Extrahera ALLA uppgifter per avdelning/bestånd inklusive huggningsklass, medeldiameter, medelhöjd, målklass, grundyta och årlig tillväxt.",
                 },
                 {
                   type: "image_url",
