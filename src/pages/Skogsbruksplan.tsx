@@ -144,6 +144,58 @@ export default function Skogsbruksplan() {
     setStandDialogOpen(false);
   };
 
+  const openEditStand = (b: typeof stands[0]) => {
+    const s = (v: any) => v != null ? String(v) : "";
+    setEditStandId(b.id);
+    setEditStand({
+      property_id: b.property_id, name: b.name, tree_species: s(b.tree_species), area_ha: s(b.area_ha),
+      age: s(b.age), volume_m3sk: s(b.volume_m3sk), volume_per_ha: s(b.volume_per_ha),
+      estimated_value: s(b.estimated_value), growth_rate_percent: s(b.growth_rate_percent),
+      planned_action: s(b.planned_action), planned_year: s(b.planned_year), notes: s(b.notes),
+      huggningsklass: s(b.huggningsklass), site_index: s(b.site_index), mean_diameter_cm: s(b.mean_diameter_cm),
+      mean_height_m: s(b.mean_height_m), goal_class: s(b.goal_class), basal_area_m2: s(b.basal_area_m2),
+      annual_growth_m3sk: s(b.annual_growth_m3sk), description: s(b.description), parcel_number: s(b.parcel_number),
+      layer: s(b.layer), vegetation_type: s(b.vegetation_type), moisture_class: s(b.moisture_class),
+      terrain_type: s(b.terrain_type), driving_conditions: s(b.driving_conditions), slope_info: s(b.slope_info),
+      gyl_values: s(b.gyl_values), alternative_action: s(b.alternative_action), timing_code: s(b.timing_code),
+      removal_percent: s(b.removal_percent), removal_volume_m3sk: s(b.removal_volume_m3sk),
+      production_goal: s(b.production_goal), general_comment: s(b.general_comment),
+      action_comment: s(b.action_comment), special_values: s(b.special_values),
+    });
+    setEditStandDialogOpen(true);
+  };
+
+  const handleUpdateStand = async () => {
+    if (!editStandId || !editStand.name) return;
+    const num = (v: string) => v ? Number(v) : null;
+    const txt = (v: string) => v || null;
+    const { error } = await supabase.from("stands").update({
+      name: editStand.name, tree_species: txt(editStand.tree_species),
+      area_ha: Number(editStand.area_ha) || 0, age: num(editStand.age) as any,
+      volume_m3sk: num(editStand.volume_m3sk), volume_per_ha: num(editStand.volume_per_ha),
+      estimated_value: num(editStand.estimated_value), growth_rate_percent: num(editStand.growth_rate_percent),
+      planned_action: txt(editStand.planned_action), planned_year: num(editStand.planned_year) as any,
+      notes: txt(editStand.notes), huggningsklass: txt(editStand.huggningsklass),
+      site_index: txt(editStand.site_index), mean_diameter_cm: num(editStand.mean_diameter_cm),
+      mean_height_m: num(editStand.mean_height_m), goal_class: txt(editStand.goal_class),
+      basal_area_m2: num(editStand.basal_area_m2), annual_growth_m3sk: num(editStand.annual_growth_m3sk),
+      description: txt(editStand.description), parcel_number: txt(editStand.parcel_number),
+      layer: txt(editStand.layer), vegetation_type: txt(editStand.vegetation_type),
+      moisture_class: txt(editStand.moisture_class), terrain_type: txt(editStand.terrain_type),
+      driving_conditions: txt(editStand.driving_conditions), slope_info: txt(editStand.slope_info),
+      gyl_values: txt(editStand.gyl_values), alternative_action: txt(editStand.alternative_action),
+      timing_code: txt(editStand.timing_code), removal_percent: num(editStand.removal_percent),
+      removal_volume_m3sk: num(editStand.removal_volume_m3sk), production_goal: txt(editStand.production_goal),
+      general_comment: txt(editStand.general_comment), action_comment: txt(editStand.action_comment),
+      special_values: txt(editStand.special_values),
+    }).eq("id", editStandId);
+    if (error) { toast.error("Kunde inte uppdatera: " + error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ["stands"] });
+    toast.success("Bestånd uppdaterat");
+    setEditStandDialogOpen(false);
+    setEditStandId(null);
+  };
+
   const handleAddActivity = async () => {
     if (!newAct.type || !newAct.property_id || !user) return;
     const income = Number(newAct.estimated_income) || 0;
