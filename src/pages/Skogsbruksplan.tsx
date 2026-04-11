@@ -441,7 +441,6 @@ export default function Skogsbruksplan() {
         <SummaryCard label="Årlig tillväxt" value={`${fmt(totalStats.tillvaxt)} m³sk`} />
       </div>
 
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
       {/* Carbon Credits Section */}
       <div className="mt-6">
         <CarbonCreditsSection stands={stands} />
