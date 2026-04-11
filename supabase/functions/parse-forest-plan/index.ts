@@ -433,7 +433,7 @@ serve(async (req) => {
 
   let importId: string | null = null;
   let userId: string | null = null;
-  let adminClient: ReturnType<typeof createClient> | null = null;
+  let adminClient: any = null;
 
   try {
     const body = await req.json();
