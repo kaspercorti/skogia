@@ -675,7 +675,7 @@ export default function Skogsbruksplan() {
                 </TableHeader>
                 <TableBody>
                   {standActivities.map(a => (
-                    <TableRow key={a.id} className={a.is_completed ? "bg-muted/30" : ""}>
+                    <TableRow key={a.id} className={cn("cursor-pointer hover:bg-muted/50", a.is_completed ? "bg-muted/30" : "")} onClick={() => openEditActivity(a)}>
                       <TableCell className="text-sm capitalize text-card-foreground">{a.type}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{a.is_completed ? a.completed_date || a.planned_date || "—" : a.planned_date || "—"}</TableCell>
                       <TableCell>
