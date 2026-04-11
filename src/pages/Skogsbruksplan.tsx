@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from "react";
-import { TreePine, ChevronRight, ChevronDown, ArrowLeft, Calendar, Trees, Plus, MapPin, Trash2, Leaf, Pencil } from "lucide-react";
+import { TreePine, ChevronRight, ChevronDown, ArrowLeft, Calendar, Trees, Plus, MapPin, Trash2, Leaf, Pencil, Upload } from "lucide-react";
 import ForestPlanImport from "@/components/forest/ForestPlanImport";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
