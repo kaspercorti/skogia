@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { useProperties, useStands, useForestActivities, useTransactions, fmt as fmtKr } from "@/hooks/useSkogskollData";
+import CarbonCreditsSection from "@/components/forest/CarbonCreditsSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
@@ -440,7 +441,12 @@ export default function Skogsbruksplan() {
         <SummaryCard label="Årlig tillväxt" value={`${fmt(totalStats.tillvaxt)} m³sk`} />
       </div>
 
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
+      {/* Carbon Credits Section */}
+      <div className="mt-6">
+        <CarbonCreditsSection stands={stands} />
+      </div>
+
+      <div className="mt-6 rounded-xl border border-border bg-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
