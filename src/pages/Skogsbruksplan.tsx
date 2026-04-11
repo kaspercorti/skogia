@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { TreePine, ChevronRight, ChevronDown, ArrowLeft, Calendar, Trees, Plus, MapPin, Trash2, Leaf, Pencil, Upload, BadgeCheck } from "lucide-react";
 import ForestPlanImport from "@/components/forest/ForestPlanImport";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,23 @@ export default function Skogsbruksplan() {
   const { data: transactions = [] } = useTransactions();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const importTriggerRef = useRef<(() => void) | null>(null);
+  const detailPanelRef = useRef<HTMLDivElement>(null);
+
+  // Sort stands by numeric part of name
+  const sortedStands = useMemo(() => {
+    return [...stands].sort((a, b) => {
+      const numA = parseInt(a.name.replace(/\D/g, '')) || 0;
+      const numB = parseInt(b.name.replace(/\D/g, '')) || 0;
+      return numA - numB;
+    });
+  }, [stands]);
+
+  // Auto-scroll to detail panel when a stand is selected
+  useEffect(() => {
+    if (selectedId && detailPanelRef.current) {
+      detailPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [selectedId]);
 
   // Dialog state
   const [propDialogOpen, setPropDialogOpen] = useState(false);
