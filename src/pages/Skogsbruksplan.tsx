@@ -136,23 +136,26 @@ export default function Skogsbruksplan() {
           <DetailCard label="Trädslag" value={selected.tree_species || "—"} small />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-            <p className="text-xs text-muted-foreground mb-1">Uppskattat värde</p>
-            <p className="text-xl font-bold text-primary tabular-nums">{fmtKr(selected.estimated_value ?? 0)}</p>
-          </div>
-          <div className="rounded-xl border border-accent/20 bg-accent/5 p-4">
-            <p className="text-xs text-muted-foreground mb-1">Ståndortsindex</p>
-            <p className="text-xl font-bold text-accent">{selected.site_index || "—"}</p>
-          </div>
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-xs text-muted-foreground mb-1">Årlig tillväxt</p>
-            <p className="text-xl font-bold text-card-foreground tabular-nums">
-              {fmt(Math.round((selected.volume_m3sk ?? 0) * ((selected.growth_rate_percent ?? 0) / 100)))} m³sk/år
-              <span className="text-sm font-normal text-muted-foreground"> ({selected.growth_rate_percent ?? 0}%)</span>
-            </p>
-          </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <DetailCard label="Huggningsklass" value={selected.huggningsklass || "—"} small />
+          <DetailCard label="Bonitet (SI)" value={selected.site_index || "—"} small />
+          <DetailCard label="Medeldiameter" value={selected.mean_diameter_cm ? `${selected.mean_diameter_cm} cm` : "—"} />
+          <DetailCard label="Medelhöjd" value={selected.mean_height_m ? `${selected.mean_height_m} m` : "—"} />
         </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <DetailCard label="Målklass" value={selected.goal_class || "—"} small />
+          <DetailCard label="Grundyta" value={selected.basal_area_m2 ? `${selected.basal_area_m2} m²/ha` : "—"} />
+          <DetailCard label="Årlig tillväxt" value={selected.annual_growth_m3sk ? `${selected.annual_growth_m3sk} m³sk` : "—"} />
+          <DetailCard label="Uppskattat värde" value={fmtKr(selected.estimated_value ?? 0)} />
+        </div>
+
+        {selected.description && (
+          <div className="rounded-xl border border-border bg-card p-4 mb-6">
+            <p className="text-xs text-muted-foreground mb-1">Beskrivning</p>
+            <p className="text-sm text-card-foreground">{selected.description}</p>
+          </div>
+        )}
 
         <div className="rounded-xl border border-border bg-card p-4 mb-6">
           <div className="flex items-center gap-2 mb-1">
