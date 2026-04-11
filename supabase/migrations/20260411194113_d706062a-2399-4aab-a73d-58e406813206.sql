@@ -1,0 +1,15 @@
+ALTER TABLE public.forest_activities
+  ADD COLUMN IF NOT EXISTS area_ha numeric DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS length_meters numeric DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS plant_count integer DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS plants_per_ha numeric DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS fertilizer_amount numeric DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS fertilizer_unit text DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS cost_per_ha numeric DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS cost_per_meter numeric DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS total_cost numeric DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS work_description text DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS quantity numeric DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS quantity_unit text DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS tree_species text DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS work_type text DEFAULT NULL;

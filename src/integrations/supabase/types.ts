@@ -168,21 +168,31 @@ export type Database = {
       forest_activities: {
         Row: {
           affects_forest_plan: boolean
+          area_ha: number | null
           completed_date: string | null
+          cost_per_ha: number | null
+          cost_per_meter: number | null
           created_at: string
           custom_type: string | null
           estimated_cost: number
           estimated_income: number
           estimated_net: number
+          fertilizer_amount: number | null
+          fertilizer_unit: string | null
           harvested_volume_m3sk: number | null
           has_subsidy: boolean
           id: string
           is_completed: boolean
+          length_meters: number | null
           notes: string | null
           plan_updated: boolean
           planned_date: string | null
+          plant_count: number | null
+          plants_per_ha: number | null
           price_per_m3sk: number | null
           property_id: string
+          quantity: number | null
+          quantity_unit: string | null
           sold_volume_m3sk: number | null
           stand_id: string | null
           status: string
@@ -191,27 +201,41 @@ export type Database = {
           subsidy_notes: string | null
           subsidy_status: string | null
           subsidy_type: string | null
+          total_cost: number | null
           total_revenue: number | null
+          tree_species: string | null
           type: string
           updated_at: string
+          work_description: string | null
+          work_type: string | null
         }
         Insert: {
           affects_forest_plan?: boolean
+          area_ha?: number | null
           completed_date?: string | null
+          cost_per_ha?: number | null
+          cost_per_meter?: number | null
           created_at?: string
           custom_type?: string | null
           estimated_cost?: number
           estimated_income?: number
           estimated_net?: number
+          fertilizer_amount?: number | null
+          fertilizer_unit?: string | null
           harvested_volume_m3sk?: number | null
           has_subsidy?: boolean
           id?: string
           is_completed?: boolean
+          length_meters?: number | null
           notes?: string | null
           plan_updated?: boolean
           planned_date?: string | null
+          plant_count?: number | null
+          plants_per_ha?: number | null
           price_per_m3sk?: number | null
           property_id: string
+          quantity?: number | null
+          quantity_unit?: string | null
           sold_volume_m3sk?: number | null
           stand_id?: string | null
           status?: string
@@ -220,27 +244,41 @@ export type Database = {
           subsidy_notes?: string | null
           subsidy_status?: string | null
           subsidy_type?: string | null
+          total_cost?: number | null
           total_revenue?: number | null
+          tree_species?: string | null
           type: string
           updated_at?: string
+          work_description?: string | null
+          work_type?: string | null
         }
         Update: {
           affects_forest_plan?: boolean
+          area_ha?: number | null
           completed_date?: string | null
+          cost_per_ha?: number | null
+          cost_per_meter?: number | null
           created_at?: string
           custom_type?: string | null
           estimated_cost?: number
           estimated_income?: number
           estimated_net?: number
+          fertilizer_amount?: number | null
+          fertilizer_unit?: string | null
           harvested_volume_m3sk?: number | null
           has_subsidy?: boolean
           id?: string
           is_completed?: boolean
+          length_meters?: number | null
           notes?: string | null
           plan_updated?: boolean
           planned_date?: string | null
+          plant_count?: number | null
+          plants_per_ha?: number | null
           price_per_m3sk?: number | null
           property_id?: string
+          quantity?: number | null
+          quantity_unit?: string | null
           sold_volume_m3sk?: number | null
           stand_id?: string | null
           status?: string
@@ -249,9 +287,13 @@ export type Database = {
           subsidy_notes?: string | null
           subsidy_status?: string | null
           subsidy_type?: string | null
+          total_cost?: number | null
           total_revenue?: number | null
+          tree_species?: string | null
           type?: string
           updated_at?: string
+          work_description?: string | null
+          work_type?: string | null
         }
         Relationships: [
           {
