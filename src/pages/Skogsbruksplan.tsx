@@ -688,7 +688,7 @@ export default function Skogsbruksplan() {
             <DialogTrigger asChild>
               <Button className="gap-2"><Plus className="h-4 w-4" /> Lägg till aktivitet</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Ny skogsaktivitet</DialogTitle></DialogHeader>
               <div className="grid gap-4 py-2">
                 <div className="space-y-1.5">
@@ -716,11 +716,13 @@ export default function Skogsbruksplan() {
                     <Select value={newAct.type} onValueChange={v => setNewAct({ ...newAct, type: v })}>
                       <SelectTrigger><SelectValue placeholder="Välj..." /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="slutavverkning">Slutavverkning</SelectItem>
-                        <SelectItem value="gallring">Gallring</SelectItem>
-                        <SelectItem value="röjning">Röjning</SelectItem>
-                        <SelectItem value="plantering">Plantering</SelectItem>
-                        <SelectItem value="markberedning">Markberedning</SelectItem>
+                        {[
+                          "slutavverkning", "gallring", "röjning", "plantering", "markberedning",
+                          "hyggesrensning", "naturvårdande skötsel", "skyddsdikning", "gödsling",
+                          "vägunderhåll", "dikesrensning", "kantzonsskötsel", "naturvårdsåtgärd", "övrigt"
+                        ].map(t => (
+                          <SelectItem key={t} value={t} className="capitalize">{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -729,6 +731,12 @@ export default function Skogsbruksplan() {
                     <Input type="date" value={newAct.planned_date} onChange={e => setNewAct({ ...newAct, planned_date: e.target.value })} />
                   </div>
                 </div>
+                {newAct.type === "övrigt" && (
+                  <div className="space-y-1.5">
+                    <Label>Ange åtgärdstyp (fritext) *</Label>
+                    <Input placeholder="Beskriv åtgärden..." value={newAct.custom_type} onChange={e => setNewAct({ ...newAct, custom_type: e.target.value })} />
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Beräknad intäkt (kr)</Label>
@@ -739,11 +747,78 @@ export default function Skogsbruksplan() {
                     <Input type="number" placeholder="0" value={newAct.estimated_cost} onChange={e => setNewAct({ ...newAct, estimated_cost: e.target.value })} />
                   </div>
                 </div>
+
+                {/* Bidrag / Stöd */}
+                <div className="rounded-lg border border-border p-3 space-y-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newAct.has_subsidy}
+                      onChange={e => setNewAct({ ...newAct, has_subsidy: e.target.checked })}
+                      className="rounded border-input h-4 w-4 accent-primary"
+                    />
+                    <span className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                      <BadgeCheck className="h-4 w-4 text-primary" /> Har bidrag / stöd
+                    </span>
+                  </label>
+                  {newAct.has_subsidy && (
+                    <div className="grid gap-3 pt-1">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Bidragstyp</Label>
+                          <Select value={newAct.subsidy_type} onValueChange={v => setNewAct({ ...newAct, subsidy_type: v })}>
+                            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Välj..." /></SelectTrigger>
+                            <SelectContent>
+                              {["Skogsstyrelsen", "LONA", "NOKÅS", "Klimatstöd", "EU-stöd", "Annat"].map(t => (
+                                <SelectItem key={t} value={t}>{t}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Belopp (kr)</Label>
+                          <Input type="number" placeholder="0" className="h-8 text-sm" value={newAct.subsidy_amount} onChange={e => setNewAct({ ...newAct, subsidy_amount: e.target.value })} />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Status</Label>
+                          <Select value={newAct.subsidy_status} onValueChange={v => setNewAct({ ...newAct, subsidy_status: v })}>
+                            <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="planned">Planerat</SelectItem>
+                              <SelectItem value="applied">Ansökt</SelectItem>
+                              <SelectItem value="approved">Beviljat</SelectItem>
+                              <SelectItem value="paid">Utbetalt</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Datum</Label>
+                          <Input type="date" className="h-8 text-sm" value={newAct.subsidy_date} onChange={e => setNewAct({ ...newAct, subsidy_date: e.target.value })} />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Kommentar</Label>
+                        <Input placeholder="T.ex. ansökningsnummer..." className="h-8 text-sm" value={newAct.subsidy_notes} onChange={e => setNewAct({ ...newAct, subsidy_notes: e.target.value })} />
+                      </div>
+                      {/* Netto-sammanfattning */}
+                      {(Number(newAct.estimated_cost) > 0 || Number(newAct.subsidy_amount) > 0) && (
+                        <div className="rounded-md bg-muted/50 p-2 text-xs space-y-0.5">
+                          <div className="flex justify-between"><span className="text-muted-foreground">Kostnad:</span><span className="text-foreground">{(Number(newAct.estimated_cost) || 0).toLocaleString("sv-SE")} kr</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">Bidrag:</span><span className="text-primary">−{(Number(newAct.subsidy_amount) || 0).toLocaleString("sv-SE")} kr</span></div>
+                          <div className="flex justify-between border-t border-border pt-0.5 font-semibold"><span className="text-muted-foreground">Nettokostnad:</span><span className="text-foreground">{((Number(newAct.estimated_cost) || 0) - (Number(newAct.subsidy_amount) || 0)).toLocaleString("sv-SE")} kr</span></div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-1.5">
                   <Label>Anteckningar</Label>
                   <Textarea placeholder="Fritext..." value={newAct.notes} onChange={e => setNewAct({ ...newAct, notes: e.target.value })} />
                 </div>
-                <Button onClick={handleAddActivity} className="mt-2 w-full">Spara aktivitet</Button>
+                <Button onClick={handleAddActivity} className="mt-2 w-full" disabled={!newAct.type || !newAct.property_id || (newAct.type === "övrigt" && !newAct.custom_type)}>Spara aktivitet</Button>
               </div>
             </DialogContent>
           </Dialog>
