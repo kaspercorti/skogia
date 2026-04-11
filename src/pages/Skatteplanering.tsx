@@ -112,11 +112,26 @@ export default function Skatteplanering() {
   const { data: activities = [] } = useForestActivities();
   const { data: stands = [] } = useStands();
   const { data: savedScenarios = [] } = useTaxScenarios();
+  const { data: lossCarryForwards = [] } = useLossCarryForwards();
+  const saveLoss = useSaveLossCarryForward();
 
   const year = new Date().getFullYear();
   const currentResultat = calcResultat(transactions, year);
-  const currentTax = calcTaxDetailed(currentResultat);
-  const currentNet = currentResultat - currentTax;
+
+  // Apply loss carry-forwards to current result
+  const lossResult = useMemo(
+    () => applyLossCarryForwards(currentResultat, lossCarryForwards),
+    [currentResultat, lossCarryForwards]
+  );
+
+  const currentTax = calcTaxDetailed(lossResult.taxableResultat);
+  const currentNet = lossResult.taxableResultat - currentTax;
+
+  // Check if current year creates a new loss
+  const currentYearCreatesLoss = currentResultat < 0;
+  const currentYearLossAmount = currentYearCreatesLoss ? Math.abs(currentResultat) : 0;
+  const existingLossForYear = lossCarryForwards.find(l => l.year === year);
+  const canSaveCurrentLoss = currentYearCreatesLoss && !existingLossForYear;
 
   const plannedActivities = activities.filter(a => a.status === "planned");
   const totalPlannedIncome = plannedActivities.reduce((s, a) => s + a.estimated_income, 0);
