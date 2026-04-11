@@ -65,11 +65,12 @@ interface ExtractedStand {
 
 interface ForestPlanImportProps {
   properties: Property[];
+  triggerRef?: React.MutableRefObject<(() => void) | null>;
 }
 
 type ImportStep = "idle" | "uploading" | "processing" | "review" | "importing" | "done" | "error";
 
-export default function ForestPlanImport({ properties }: ForestPlanImportProps) {
+export default function ForestPlanImport({ properties, triggerRef }: ForestPlanImportProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
