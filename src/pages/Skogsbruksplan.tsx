@@ -446,7 +446,8 @@ export default function Skogsbruksplan() {
                     <TableHead className="text-right">Kostnad</TableHead>
                     <TableHead className="text-right">Intäkt</TableHead>
                     <TableHead className="text-right">Bidrag</TableHead>
-                    <TableHead className="text-right">Netto</TableHead>
+                     <TableHead className="text-right">Netto</TableHead>
+                     <TableHead className="w-16"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -455,7 +456,12 @@ export default function Skogsbruksplan() {
                       <TableCell className="text-sm capitalize text-card-foreground">{a.type}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{a.is_completed ? a.completed_date || a.planned_date || "—" : a.planned_date || "—"}</TableCell>
                       <TableCell>
-                        <Badge variant={a.is_completed ? "default" : "secondary"} className="text-xs">
+                        <Badge
+                          variant={a.is_completed ? "default" : "secondary"}
+                          className="text-xs cursor-pointer hover:opacity-80"
+                          onClick={() => handleToggleActivityStatus(a)}
+                          title={a.is_completed ? "Klicka för att ändra till planerad" : "Klicka för att markera som genomförd"}
+                        >
                           {a.is_completed ? "Genomförd" : a.status === "planned" ? "Planerad" : a.status}
                         </Badge>
                       </TableCell>
@@ -465,6 +471,25 @@ export default function Skogsbruksplan() {
                       <TableCell className="text-right text-sm tabular-nums">{a.has_subsidy && a.subsidy_amount > 0 ? <span className="flex items-center justify-end gap-1 text-primary"><BadgeCheck className="h-3 w-3" />{fmtKr(a.subsidy_amount)}</span> : "—"}</TableCell>
                       <TableCell className={cn("text-right text-sm font-semibold tabular-nums", a.estimated_net >= 0 ? "text-primary" : "text-card-foreground")}>
                         {a.estimated_net >= 0 ? "+" : "−"}{fmtKr(Math.abs(a.estimated_net))}
+                      </TableCell>
+                      <TableCell>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={e => e.stopPropagation()}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Ta bort aktivitet</AlertDialogTitle>
+                              <AlertDialogDescription>Är du säker på att du vill ta bort denna {a.type}-aktivitet? Detta kan inte ångras.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteActivity(a.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Ta bort</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </TableCell>
                     </TableRow>
                   ))}
