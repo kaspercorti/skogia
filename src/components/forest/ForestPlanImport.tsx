@@ -23,6 +23,13 @@ interface ExtractedStand {
   age: number | null;
   volume_m3sk: number | null;
   site_index: string | null;
+  huggningsklass: string | null;
+  mean_diameter_cm: number | null;
+  mean_height_m: number | null;
+  goal_class: string | null;
+  basal_area_m2: number | null;
+  annual_growth_m3sk: number | null;
+  description: string | null;
   planned_action: string | null;
   planned_year: number | null;
   notes: string | null;
@@ -152,9 +159,15 @@ export default function ForestPlanImport({ properties }: ForestPlanImportProps) 
         age: s.age || null,
         volume_m3sk: s.volume_m3sk || null,
         site_index: s.site_index || null,
+        huggningsklass: s.huggningsklass || null,
+        mean_diameter_cm: s.mean_diameter_cm || null,
+        mean_height_m: s.mean_height_m || null,
+        goal_class: s.goal_class || null,
+        basal_area_m2: s.basal_area_m2 || null,
+        annual_growth_m3sk: s.annual_growth_m3sk || null,
+        notes: [s.description, s.notes].filter(Boolean).join(". ") || null,
         planned_action: s.planned_action || null,
         planned_year: s.planned_year || null,
-        notes: s.notes || null,
       }));
 
       const { data: createdStands, error: standErr } = await supabase
