@@ -386,7 +386,160 @@ export default function Skogsbruksplan() {
     toast.success(nowCompleted ? "Aktivitet markerad som genomförd" : "Aktivitet markerad som planerad");
   };
 
-  const selectedStandPanel = selected ? (() => {
+  const openEditActivity = (a: typeof activities[0]) => {
+    const s = (v: any) => v != null ? String(v) : "";
+    setEditActId(a.id);
+    setEditAct({
+      property_id: a.property_id,
+      stand_id: a.stand_id || "",
+      type: a.custom_type ? "övrigt" : a.type,
+      custom_type: a.custom_type || "",
+      planned_date: a.planned_date || "",
+      estimated_income: s(a.estimated_income),
+      estimated_cost: s(a.estimated_cost),
+      notes: a.notes || "",
+      has_subsidy: a.has_subsidy,
+      subsidy_type: a.subsidy_type || "",
+      subsidy_amount: s(a.subsidy_amount),
+      subsidy_status: a.subsidy_status || "planned",
+      subsidy_date: a.subsidy_date || "",
+      subsidy_notes: a.subsidy_notes || "",
+      harvested_volume_m3sk: s(a.harvested_volume_m3sk),
+      sold_volume_m3sk: s(a.sold_volume_m3sk),
+      price_per_m3sk: s(a.price_per_m3sk),
+      total_revenue: s(a.total_revenue),
+      cost_per_m3sk: "",
+      area_ha: s((a as any).area_ha),
+      length_meters: s((a as any).length_meters),
+      plant_count: s((a as any).plant_count),
+      plants_per_ha: s((a as any).plants_per_ha),
+      fertilizer_amount: s((a as any).fertilizer_amount),
+      fertilizer_unit: (a as any).fertilizer_unit || "kg/ha",
+      cost_per_ha: s((a as any).cost_per_ha),
+      cost_per_meter: s((a as any).cost_per_meter),
+      total_cost: s((a as any).total_cost),
+      work_description: (a as any).work_description || "",
+      quantity: s((a as any).quantity),
+      quantity_unit: (a as any).quantity_unit || "",
+      tree_species: (a as any).tree_species || "",
+      work_type: (a as any).work_type || "",
+      is_completed: a.is_completed,
+      completed_date: a.completed_date || "",
+      affects_forest_plan: a.affects_forest_plan,
+    });
+    setEditActDialogOpen(true);
+  };
+
+  const handleUpdateActivity = async () => {
+    if (!editActId || !editAct.type || !editAct.property_id) return;
+    const isHarvest = HARVEST_TYPES.includes(editAct.type);
+    const income = Number(editAct.estimated_income) || 0;
+    const cost = Number(editAct.estimated_cost) || Number(editAct.total_cost) || 0;
+    const subsidyAmt = editAct.has_subsidy ? (Number(editAct.subsidy_amount) || 0) : 0;
+    const harvestedVol = isHarvest ? (Number(editAct.harvested_volume_m3sk) || 0) : 0;
+    const soldVol = isHarvest ? (Number(editAct.sold_volume_m3sk) || harvestedVol) : 0;
+    const pricePerM3 = isHarvest && editAct.price_per_m3sk ? Number(editAct.price_per_m3sk) : null;
+    const totalRev = isHarvest ? (Number(editAct.total_revenue) || (pricePerM3 && soldVol ? pricePerM3 * soldVol : 0)) : 0;
+    const finalIncome = totalRev > 0 ? totalRev : income;
+
+    // Get original activity to check if completion status changed
+    const original = activities.find(a => a.id === editActId);
+    if (!original) return;
+
+    const wasCompleted = original.is_completed;
+    const nowCompleted = editAct.is_completed;
+    const oldHarvest = original.harvested_volume_m3sk || 0;
+
+    const selectedStand = editAct.stand_id && editAct.stand_id !== "none" ? stands.find(s => s.id === editAct.stand_id) : null;
+
+    // Volume validation for harvest types
+    if (isHarvest && nowCompleted && editAct.affects_forest_plan && selectedStand && harvestedVol > 0) {
+      const currentVol = selectedStand.volume_m3sk ?? 0;
+      // Add back old harvest if it was previously deducted
+      const availableVol = wasCompleted && original.affects_forest_plan ? currentVol + oldHarvest : currentVol;
+      if (harvestedVol > availableVol) {
+        toast.error(`Uttaget (${harvestedVol} m³sk) överstiger tillgängligt virkesförråd (${availableVol} m³sk)`);
+        return;
+      }
+    }
+
+    const { error } = await supabase.from("forest_activities").update({
+      property_id: editAct.property_id,
+      stand_id: editAct.stand_id && editAct.stand_id !== "none" ? editAct.stand_id : null,
+      type: editAct.type === "övrigt" && editAct.custom_type ? editAct.custom_type : editAct.type,
+      custom_type: editAct.type === "övrigt" ? editAct.custom_type || null : null,
+      planned_date: editAct.planned_date || null,
+      estimated_income: finalIncome,
+      estimated_cost: cost,
+      estimated_net: finalIncome - cost + subsidyAmt,
+      status: nowCompleted ? "completed" : "planned",
+      notes: editAct.notes || null,
+      has_subsidy: editAct.has_subsidy,
+      subsidy_type: editAct.has_subsidy ? editAct.subsidy_type || null : null,
+      subsidy_amount: subsidyAmt,
+      subsidy_status: editAct.has_subsidy ? editAct.subsidy_status || "planned" : null,
+      subsidy_date: editAct.has_subsidy && editAct.subsidy_date ? editAct.subsidy_date : null,
+      subsidy_notes: editAct.has_subsidy ? editAct.subsidy_notes || null : null,
+      harvested_volume_m3sk: harvestedVol,
+      sold_volume_m3sk: soldVol,
+      price_per_m3sk: pricePerM3,
+      total_revenue: totalRev,
+      is_completed: nowCompleted,
+      completed_date: nowCompleted ? (editAct.completed_date || new Date().toISOString().slice(0, 10)) : null,
+      affects_forest_plan: isHarvest ? editAct.affects_forest_plan : false,
+      area_ha: Number(editAct.area_ha) || null,
+      length_meters: Number(editAct.length_meters) || null,
+      plant_count: Number(editAct.plant_count) || null,
+      plants_per_ha: Number(editAct.plants_per_ha) || null,
+      fertilizer_amount: Number(editAct.fertilizer_amount) || null,
+      fertilizer_unit: editAct.fertilizer_unit || null,
+      cost_per_ha: Number(editAct.cost_per_ha) || null,
+      cost_per_meter: Number(editAct.cost_per_meter) || null,
+      total_cost: Number(editAct.total_cost) || null,
+      work_description: editAct.work_description || null,
+      quantity: Number(editAct.quantity) || null,
+      quantity_unit: editAct.quantity_unit || null,
+      tree_species: editAct.tree_species || null,
+      work_type: editAct.work_type || null,
+    } as any).eq("id", editActId);
+    if (error) { toast.error("Kunde inte uppdatera: " + error.message); return; }
+
+    // Handle stand volume changes for harvest types
+    if (isHarvest && selectedStand) {
+      const currentVol = selectedStand.volume_m3sk ?? 0;
+      let newVol = currentVol;
+
+      // Restore old volume if it was previously deducted
+      if (wasCompleted && original.affects_forest_plan && oldHarvest > 0) {
+        newVol += oldHarvest;
+      }
+      // Deduct new volume if now completed
+      if (nowCompleted && editAct.affects_forest_plan && harvestedVol > 0) {
+        newVol -= harvestedVol;
+      }
+
+      if (newVol !== currentVol) {
+        const { error: standErr } = await supabase.from("stands").update({
+          volume_m3sk: Math.max(0, newVol),
+          volume_per_ha: selectedStand.area_ha > 0 ? Math.round((Math.max(0, newVol) / selectedStand.area_ha) * 10) / 10 : null,
+        }).eq("id", selectedStand.id);
+        if (standErr) {
+          toast.error("Aktivitet uppdaterad men kunde inte uppdatera beståndsvolym: " + standErr.message);
+        } else {
+          toast.success(`Virkesförråd uppdaterat: ${fmt(currentVol)} → ${fmt(Math.max(0, newVol))} m³sk`);
+        }
+        // Update plan_updated flag
+        await supabase.from("forest_activities").update({ plan_updated: nowCompleted && editAct.affects_forest_plan && harvestedVol > 0 } as any).eq("id", editActId);
+      }
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
+    queryClient.invalidateQueries({ queryKey: ["stands"] });
+    toast.success("Aktivitet uppdaterad");
+    setEditActDialogOpen(false);
+    setEditActId(null);
+  };
+
     const propName = properties.find(p => p.id === selected.property_id)?.name || "";
     const standActivities = activities.filter(a => a.stand_id === selected.id);
     const standTransactions = transactions.filter(t => t.stand_id === selected.id);
