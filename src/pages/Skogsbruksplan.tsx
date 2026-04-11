@@ -540,6 +540,7 @@ export default function Skogsbruksplan() {
     setEditActId(null);
   };
 
+  const selectedStandPanel = selected ? (() => {
     const propName = properties.find(p => p.id === selected.property_id)?.name || "";
     const standActivities = activities.filter(a => a.stand_id === selected.id);
     const standTransactions = transactions.filter(t => t.stand_id === selected.id);
