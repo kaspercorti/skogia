@@ -183,13 +183,13 @@ export default function Skatteplanering() {
     if (plannedActivities.length === 0) return [];
     const allIds = plannedActivities.map(a => a.id);
     return [
-      buildScenario("Avverka allt i år", year, allIds, activities, currentResultat, 100, 0, 0),
-      buildScenario("Avverka allt nästa år", year + 1, allIds, activities, currentResultat, 100, 0, 0),
-      buildScenario("Vänta 2 år", year + 2, allIds, activities, currentResultat, 100, 0, 0),
-      buildScenario("Halvt uttag i år", year, allIds, activities, currentResultat, 50, 0, 0),
-      buildScenario("Halvt uttag nästa år", year + 1, allIds, activities, currentResultat, 50, 0, 0),
+      buildScenario("Avverka allt i år", year, allIds, activities, currentResultat, 100, 0, 0, lossCarryForwards),
+      buildScenario("Avverka allt nästa år", year + 1, allIds, activities, currentResultat, 100, 0, 0, lossCarryForwards),
+      buildScenario("Vänta 2 år", year + 2, allIds, activities, currentResultat, 100, 0, 0, lossCarryForwards),
+      buildScenario("Halvt uttag i år", year, allIds, activities, currentResultat, 50, 0, 0, lossCarryForwards),
+      buildScenario("Halvt uttag nästa år", year + 1, allIds, activities, currentResultat, 50, 0, 0, lossCarryForwards),
     ];
-  }, [plannedActivities, activities, currentResultat, year]);
+  }, [plannedActivities, activities, currentResultat, year, lossCarryForwards]);
 
   /* ── Recommendations ── */
   const allCompare = [...simScenarios, ...quickScenarios];
