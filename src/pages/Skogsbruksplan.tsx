@@ -136,23 +136,26 @@ export default function Skogsbruksplan() {
           <DetailCard label="Trädslag" value={selected.tree_species || "—"} small />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-            <p className="text-xs text-muted-foreground mb-1">Uppskattat värde</p>
-            <p className="text-xl font-bold text-primary tabular-nums">{fmtKr(selected.estimated_value ?? 0)}</p>
-          </div>
-          <div className="rounded-xl border border-accent/20 bg-accent/5 p-4">
-            <p className="text-xs text-muted-foreground mb-1">Ståndortsindex</p>
-            <p className="text-xl font-bold text-accent">{selected.site_index || "—"}</p>
-          </div>
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-xs text-muted-foreground mb-1">Årlig tillväxt</p>
-            <p className="text-xl font-bold text-card-foreground tabular-nums">
-              {fmt(Math.round((selected.volume_m3sk ?? 0) * ((selected.growth_rate_percent ?? 0) / 100)))} m³sk/år
-              <span className="text-sm font-normal text-muted-foreground"> ({selected.growth_rate_percent ?? 0}%)</span>
-            </p>
-          </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <DetailCard label="Huggningsklass" value={selected.huggningsklass || "—"} small />
+          <DetailCard label="Bonitet (SI)" value={selected.site_index || "—"} small />
+          <DetailCard label="Medeldiameter" value={selected.mean_diameter_cm ? `${selected.mean_diameter_cm} cm` : "—"} />
+          <DetailCard label="Medelhöjd" value={selected.mean_height_m ? `${selected.mean_height_m} m` : "—"} />
         </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <DetailCard label="Målklass" value={selected.goal_class || "—"} small />
+          <DetailCard label="Grundyta" value={selected.basal_area_m2 ? `${selected.basal_area_m2} m²/ha` : "—"} />
+          <DetailCard label="Årlig tillväxt" value={selected.annual_growth_m3sk ? `${selected.annual_growth_m3sk} m³sk` : "—"} />
+          <DetailCard label="Uppskattat värde" value={fmtKr(selected.estimated_value ?? 0)} />
+        </div>
+
+        {selected.description && (
+          <div className="rounded-xl border border-border bg-card p-4 mb-6">
+            <p className="text-xs text-muted-foreground mb-1">Beskrivning</p>
+            <p className="text-sm text-card-foreground">{selected.description}</p>
+          </div>
+        )}
 
         <div className="rounded-xl border border-border bg-card p-4 mb-6">
           <div className="flex items-center gap-2 mb-1">
@@ -446,38 +449,49 @@ export default function Skogsbruksplan() {
         <CarbonCreditsSection stands={stands} />
       </div>
 
-      <div className="mt-6 rounded-xl border border-border bg-card overflow-hidden">
+      <div className="mt-6 rounded-xl border border-border bg-card overflow-hidden overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Bestånd</TableHead>
-              <TableHead className="hidden md:table-cell">Areal</TableHead>
-              <TableHead className="hidden md:table-cell">Ålder</TableHead>
-              <TableHead className="hidden lg:table-cell">Trädslag</TableHead>
-              <TableHead>Volym</TableHead>
-              <TableHead className="hidden md:table-cell">Åtgärd</TableHead>
+              <TableHead>Areal</TableHead>
+              <TableHead>Ålder</TableHead>
+              <TableHead>Hkl</TableHead>
+              <TableHead>Bonitet</TableHead>
+              <TableHead>Trädslag</TableHead>
+              <TableHead className="text-right">Volym</TableHead>
+              <TableHead className="text-right">Diam (cm)</TableHead>
+              <TableHead className="text-right">Höjd (m)</TableHead>
+              <TableHead>Målklass</TableHead>
+              <TableHead className="text-right">G-yta</TableHead>
+              <TableHead className="text-right">Tillväxt</TableHead>
+              <TableHead>Åtgärd</TableHead>
               <TableHead className="text-right">Värde</TableHead>
               <TableHead className="w-8"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {stands.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Inga bestånd ännu – lägg till en fastighet och bestånd ovan</TableCell></TableRow>
+              <TableRow><TableCell colSpan={15} className="text-center text-muted-foreground py-8">Inga bestånd ännu – lägg till en fastighet och bestånd ovan</TableCell></TableRow>
             ) : (
               stands.map(b => (
                 <TableRow key={b.id} className="cursor-pointer" onClick={() => setSelectedId(b.id)}>
                   <TableCell>
-                    <div>
-                      <p className="text-sm font-medium text-card-foreground">{b.name}</p>
-                      <p className="text-xs text-muted-foreground md:hidden">{b.area_ha} ha · {b.age ?? "—"} år</p>
-                    </div>
+                    <p className="text-sm font-medium text-card-foreground whitespace-nowrap">{b.name}</p>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{b.area_ha} ha</TableCell>
-                  <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{b.age ?? "—"} år</TableCell>
-                  <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">{b.tree_species}</TableCell>
-                  <TableCell className="text-sm tabular-nums text-card-foreground">{fmt(b.volume_m3sk ?? 0)} m³sk</TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <Badge variant="secondary" className="text-xs font-normal">{b.planned_action || "—"} {b.planned_year || ""}</Badge>
+                  <TableCell className="text-sm text-muted-foreground">{b.area_ha} ha</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{b.age ?? "—"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{b.huggningsklass || "—"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{b.site_index || "—"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{b.tree_species || "—"}</TableCell>
+                  <TableCell className="text-right text-sm tabular-nums text-card-foreground">{fmt(b.volume_m3sk ?? 0)}</TableCell>
+                  <TableCell className="text-right text-sm tabular-nums text-muted-foreground">{b.mean_diameter_cm ?? "—"}</TableCell>
+                  <TableCell className="text-right text-sm tabular-nums text-muted-foreground">{b.mean_height_m ?? "—"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{b.goal_class || "—"}</TableCell>
+                  <TableCell className="text-right text-sm tabular-nums text-muted-foreground">{b.basal_area_m2 ?? "—"}</TableCell>
+                  <TableCell className="text-right text-sm tabular-nums text-muted-foreground">{b.annual_growth_m3sk ?? "—"}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="text-xs font-normal whitespace-nowrap">{b.planned_action || "—"} {b.planned_year || ""}</Badge>
                   </TableCell>
                   <TableCell className="text-right text-sm font-semibold tabular-nums text-primary">{fmtKr(b.estimated_value ?? 0)}</TableCell>
                   <TableCell><ChevronRight className="h-4 w-4 text-muted-foreground" /></TableCell>
