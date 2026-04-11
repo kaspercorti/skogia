@@ -167,16 +167,23 @@ export type Database = {
       }
       forest_activities: {
         Row: {
+          affects_forest_plan: boolean
+          completed_date: string | null
           created_at: string
           custom_type: string | null
           estimated_cost: number
           estimated_income: number
           estimated_net: number
+          harvested_volume_m3sk: number | null
           has_subsidy: boolean
           id: string
+          is_completed: boolean
           notes: string | null
+          plan_updated: boolean
           planned_date: string | null
+          price_per_m3sk: number | null
           property_id: string
+          sold_volume_m3sk: number | null
           stand_id: string | null
           status: string
           subsidy_amount: number
@@ -184,20 +191,28 @@ export type Database = {
           subsidy_notes: string | null
           subsidy_status: string | null
           subsidy_type: string | null
+          total_revenue: number | null
           type: string
           updated_at: string
         }
         Insert: {
+          affects_forest_plan?: boolean
+          completed_date?: string | null
           created_at?: string
           custom_type?: string | null
           estimated_cost?: number
           estimated_income?: number
           estimated_net?: number
+          harvested_volume_m3sk?: number | null
           has_subsidy?: boolean
           id?: string
+          is_completed?: boolean
           notes?: string | null
+          plan_updated?: boolean
           planned_date?: string | null
+          price_per_m3sk?: number | null
           property_id: string
+          sold_volume_m3sk?: number | null
           stand_id?: string | null
           status?: string
           subsidy_amount?: number
@@ -205,20 +220,28 @@ export type Database = {
           subsidy_notes?: string | null
           subsidy_status?: string | null
           subsidy_type?: string | null
+          total_revenue?: number | null
           type: string
           updated_at?: string
         }
         Update: {
+          affects_forest_plan?: boolean
+          completed_date?: string | null
           created_at?: string
           custom_type?: string | null
           estimated_cost?: number
           estimated_income?: number
           estimated_net?: number
+          harvested_volume_m3sk?: number | null
           has_subsidy?: boolean
           id?: string
+          is_completed?: boolean
           notes?: string | null
+          plan_updated?: boolean
           planned_date?: string | null
+          price_per_m3sk?: number | null
           property_id?: string
+          sold_volume_m3sk?: number | null
           stand_id?: string | null
           status?: string
           subsidy_amount?: number
@@ -226,6 +249,7 @@ export type Database = {
           subsidy_notes?: string | null
           subsidy_status?: string | null
           subsidy_type?: string | null
+          total_revenue?: number | null
           type?: string
           updated_at?: string
         }

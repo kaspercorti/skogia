@@ -72,6 +72,14 @@ export type ForestActivity = {
   subsidy_date: string | null;
   subsidy_notes: string | null;
   custom_type: string | null;
+  harvested_volume_m3sk: number;
+  sold_volume_m3sk: number;
+  price_per_m3sk: number | null;
+  total_revenue: number;
+  is_completed: boolean;
+  completed_date: string | null;
+  affects_forest_plan: boolean;
+  plan_updated: boolean;
 };
 
 export type Customer = {
