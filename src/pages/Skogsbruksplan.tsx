@@ -232,129 +232,113 @@ export default function Skogsbruksplan() {
       ...extraStandIds.filter(Boolean),
     ]));
 
-    // Belopp som ska fördelas (totalt över alla valda bestånd)
-    const totalIncomeInput = Number(newAct.estimated_income) || 0;
-    const totalCostInput = Number(newAct.estimated_cost) || Number(newAct.total_cost) || 0;
-    const totalSubsidyInput = newAct.has_subsidy ? (Number(newAct.subsidy_amount) || 0) : 0;
-    const totalHarvested = isHarvest ? (Number(newAct.harvested_volume_m3sk) || 0) : 0;
-    const totalSold = isHarvest ? (Number(newAct.sold_volume_m3sk) || totalHarvested) : 0;
+    // Värden – sparas EXAKT som angivet (ingen fördelning över bestånd).
+    const incomeInput = Number(newAct.estimated_income) || 0;
+    const costInput = Number(newAct.estimated_cost) || Number(newAct.total_cost) || 0;
+    const subsidyInput = newAct.has_subsidy ? (Number(newAct.subsidy_amount) || 0) : 0;
+    const harvested = isHarvest ? (Number(newAct.harvested_volume_m3sk) || 0) : 0;
+    const sold = isHarvest ? (Number(newAct.sold_volume_m3sk) || harvested) : 0;
     const pricePerM3 = isHarvest && newAct.price_per_m3sk ? Number(newAct.price_per_m3sk) : null;
-    const totalRevenueInput = isHarvest
-      ? (Number(newAct.total_revenue) || (pricePerM3 && totalSold ? pricePerM3 * totalSold : 0))
+    const revenueInput = isHarvest
+      ? (Number(newAct.total_revenue) || (pricePerM3 && sold ? pricePerM3 * sold : 0))
       : 0;
-    const totalAreaInput = Number(newAct.area_ha) || 0;
-    const totalLengthInput = Number(newAct.length_meters) || 0;
-    const totalPlantsInput = Number(newAct.plant_count) || 0;
-    const totalFertilizerInput = Number(newAct.fertilizer_amount) || 0;
+    const finalIncome = revenueInput > 0 ? revenueInput : incomeInput;
+    const areaInput = Number(newAct.area_ha) || 0;
+    const lengthInput = Number(newAct.length_meters) || 0;
+    const plantsInput = Number(newAct.plant_count) || 0;
+    const fertilizerInput = Number(newAct.fertilizer_amount) || 0;
 
-    // Bestäm fördelningsvikter (per bestånd) – baseras på areal, fallback lika.
+    // Validera uttag mot SUMMAN av virkesförrådet i de valda bestånden.
     const standObjs = allStandIds.map(id => stands.find(s => s.id === id)).filter(Boolean) as typeof stands;
-    const totalWeightArea = standObjs.reduce((sum, s) => sum + (s.area_ha || 0), 0);
-    const useEqualSplit = standObjs.length === 0 || totalWeightArea <= 0;
-    const weightFor = (sid: string | null) => {
-      if (!sid || useEqualSplit) return standObjs.length > 0 ? 1 / Math.max(1, standObjs.length) : 1;
-      const s = standObjs.find(x => x.id === sid);
-      return ((s?.area_ha || 0) / totalWeightArea) || (1 / Math.max(1, standObjs.length));
-    };
+    const totalAvailableVol = standObjs.reduce((sum, s) => sum + (s.volume_m3sk ?? 0), 0);
+    const totalStandArea = standObjs.reduce((sum, s) => sum + (s.area_ha || 0), 0);
 
-    // Validera uttag mot tillgängligt virke per bestånd (om markerat slutfört + uppdatera plan)
-    if (isHarvest && newAct.is_completed && newAct.affects_forest_plan && totalHarvested > 0) {
+    if (isHarvest && newAct.is_completed && newAct.affects_forest_plan && harvested > 0) {
       if (allStandIds.length === 0) {
         toast.error("Välj minst ett bestånd för att kunna uppdatera skogsbruksplanen");
         return;
       }
-      for (const sid of allStandIds) {
-        const stand = stands.find(s => s.id === sid);
-        if (!stand) continue;
-        const w = weightFor(sid);
-        const harvForStand = totalHarvested * w;
-        const currentVol = stand.volume_m3sk ?? 0;
-        if (harvForStand > currentVol) {
-          toast.error(`Uttaget på ${stand.name} (${Math.round(harvForStand)} m³sk) överstiger virkesförrådet (${currentVol} m³sk)`);
-          return;
-        }
+      if (harvested > totalAvailableVol) {
+        toast.error(`Uttaget (${Math.round(harvested)} m³sk) överstiger summa virkesförråd för valda bestånd (${Math.round(totalAvailableVol)} m³sk)`);
+        return;
       }
     }
 
-    // Bygg en rad per bestånd, eller en enda rad om inget bestånd valts
-    const targets: (string | null)[] = allStandIds.length > 0 ? allStandIds : [null];
+    // Skapa EN aktivitet, kopplad till primärt bestånd (för bakåtkompatibilitet).
+    const primaryForRow = allStandIds[0] ?? null;
+    const { data: inserted, error } = await supabase.from("forest_activities").insert({
+      property_id: newAct.property_id,
+      stand_id: primaryForRow,
+      type: newAct.type === "övrigt" && newAct.custom_type ? newAct.custom_type : newAct.type,
+      custom_type: newAct.type === "övrigt" ? newAct.custom_type || null : null,
+      planned_date: newAct.planned_date || null,
+      estimated_income: finalIncome,
+      estimated_cost: costInput,
+      estimated_net: finalIncome - costInput + subsidyInput,
+      status: newAct.is_completed ? "completed" : "planned",
+      notes: newAct.notes || null,
+      has_subsidy: newAct.has_subsidy,
+      subsidy_type: newAct.has_subsidy ? newAct.subsidy_type || null : null,
+      subsidy_amount: subsidyInput,
+      subsidy_status: newAct.has_subsidy ? newAct.subsidy_status || "planned" : null,
+      subsidy_date: newAct.has_subsidy && newAct.subsidy_date ? newAct.subsidy_date : null,
+      subsidy_notes: newAct.has_subsidy ? newAct.subsidy_notes || null : null,
+      harvested_volume_m3sk: harvested,
+      sold_volume_m3sk: sold,
+      price_per_m3sk: pricePerM3,
+      total_revenue: revenueInput,
+      is_completed: newAct.is_completed,
+      completed_date: newAct.is_completed ? (newAct.completed_date || new Date().toISOString().slice(0, 10)) : null,
+      affects_forest_plan: isHarvest ? newAct.affects_forest_plan : false,
+      plan_updated: false,
+      area_ha: areaInput > 0 ? areaInput : null,
+      length_meters: lengthInput > 0 ? lengthInput : null,
+      plant_count: plantsInput > 0 ? plantsInput : null,
+      plants_per_ha: Number(newAct.plants_per_ha) || null,
+      fertilizer_amount: fertilizerInput > 0 ? fertilizerInput : null,
+      fertilizer_unit: newAct.fertilizer_unit || null,
+      cost_per_ha: Number(newAct.cost_per_ha) || null,
+      cost_per_meter: Number(newAct.cost_per_meter) || null,
+      total_cost: costInput > 0 ? costInput : null,
+      work_description: newAct.work_description || null,
+      quantity: Number(newAct.quantity) || null,
+      quantity_unit: newAct.quantity_unit || null,
+      tree_species: newAct.tree_species || null,
+      work_type: newAct.work_type || null,
+    } as any).select().single();
+    if (error || !inserted) { toast.error("Kunde inte spara: " + (error?.message ?? "okänt fel")); return; }
 
-    let createdCount = 0;
-    for (const sid of targets) {
-      const w = allStandIds.length > 0 ? weightFor(sid) : 1;
-      const incomeRow = totalIncomeInput * w;
-      const costRow = totalCostInput * w;
-      const subsidyRow = totalSubsidyInput * w;
-      const harvRow = totalHarvested * w;
-      const soldRow = totalSold * w;
-      const revRow = totalRevenueInput * w;
-      const finalIncomeRow = revRow > 0 ? revRow : incomeRow;
+    // Koppla alla valda bestånd via länktabellen (om fler än ett valts).
+    if (allStandIds.length > 0) {
+      const links = allStandIds.map(sid => ({ activity_id: (inserted as any).id, stand_id: sid }));
+      const { error: linkErr } = await supabase.from("forest_activity_stands" as any).insert(links);
+      if (linkErr) toast.error("Aktivitet sparad men kopplingar misslyckades: " + linkErr.message);
+    }
 
-      const { error } = await supabase.from("forest_activities").insert({
-        property_id: newAct.property_id,
-        stand_id: sid,
-        type: newAct.type === "övrigt" && newAct.custom_type ? newAct.custom_type : newAct.type,
-        custom_type: newAct.type === "övrigt" ? newAct.custom_type || null : null,
-        planned_date: newAct.planned_date || null,
-        estimated_income: finalIncomeRow,
-        estimated_cost: costRow,
-        estimated_net: finalIncomeRow - costRow + subsidyRow,
-        status: newAct.is_completed ? "completed" : "planned",
-        notes: newAct.notes || null,
-        has_subsidy: newAct.has_subsidy,
-        subsidy_type: newAct.has_subsidy ? newAct.subsidy_type || null : null,
-        subsidy_amount: subsidyRow,
-        subsidy_status: newAct.has_subsidy ? newAct.subsidy_status || "planned" : null,
-        subsidy_date: newAct.has_subsidy && newAct.subsidy_date ? newAct.subsidy_date : null,
-        subsidy_notes: newAct.has_subsidy ? newAct.subsidy_notes || null : null,
-        harvested_volume_m3sk: harvRow,
-        sold_volume_m3sk: soldRow,
-        price_per_m3sk: pricePerM3,
-        total_revenue: revRow,
-        is_completed: newAct.is_completed,
-        completed_date: newAct.is_completed ? (newAct.completed_date || new Date().toISOString().slice(0, 10)) : null,
-        affects_forest_plan: isHarvest ? newAct.affects_forest_plan : false,
-        plan_updated: false,
-        area_ha: totalAreaInput > 0 ? totalAreaInput * w : null,
-        length_meters: totalLengthInput > 0 ? totalLengthInput * w : null,
-        plant_count: totalPlantsInput > 0 ? Math.round(totalPlantsInput * w) : null,
-        plants_per_ha: Number(newAct.plants_per_ha) || null,
-        fertilizer_amount: totalFertilizerInput > 0 ? totalFertilizerInput * w : null,
-        fertilizer_unit: newAct.fertilizer_unit || null,
-        cost_per_ha: Number(newAct.cost_per_ha) || null,
-        cost_per_meter: Number(newAct.cost_per_meter) || null,
-        total_cost: totalCostInput > 0 ? totalCostInput * w : null,
-        work_description: newAct.work_description || null,
-        quantity: Number(newAct.quantity) || null,
-        quantity_unit: newAct.quantity_unit || null,
-        tree_species: newAct.tree_species || null,
-        work_type: newAct.work_type || null,
-      } as any);
-      if (error) { toast.error("Kunde inte spara: " + error.message); return; }
-      createdCount++;
-
-      // Auto-uppdatera bestånd för uttag
-      if (isHarvest && newAct.is_completed && newAct.affects_forest_plan && sid && harvRow > 0) {
-        const stand = stands.find(s => s.id === sid);
-        if (stand) {
-          const currentVol = stand.volume_m3sk ?? 0;
-          const newVol = currentVol - harvRow;
-          const { error: standErr } = await supabase.from("stands").update({
-            volume_m3sk: newVol,
-            volume_per_ha: stand.area_ha > 0 ? Math.round((newVol / stand.area_ha) * 10) / 10 : null,
-          }).eq("id", stand.id);
-          if (standErr) {
-            toast.error(`Aktivitet sparad men kunde inte uppdatera ${stand.name}: ${standErr.message}`);
-          } else {
-            await supabase.from("forest_activities").update({ plan_updated: true } as any).eq("stand_id", stand.id).eq("is_completed", true).eq("plan_updated", false);
-          }
+    // Auto-uppdatera bestånd för uttag – fördela uttaget proportionellt mot volym (eller areal).
+    if (isHarvest && newAct.is_completed && newAct.affects_forest_plan && harvested > 0 && standObjs.length > 0) {
+      const useVolWeight = totalAvailableVol > 0;
+      for (const stand of standObjs) {
+        const w = useVolWeight
+          ? (stand.volume_m3sk ?? 0) / totalAvailableVol
+          : (totalStandArea > 0 ? (stand.area_ha || 0) / totalStandArea : 1 / standObjs.length);
+        const harvForStand = harvested * w;
+        const currentVol = stand.volume_m3sk ?? 0;
+        const newVol = Math.max(0, currentVol - harvForStand);
+        const { error: standErr } = await supabase.from("stands").update({
+          volume_m3sk: newVol,
+          volume_per_ha: stand.area_ha > 0 ? Math.round((newVol / stand.area_ha) * 10) / 10 : null,
+        }).eq("id", stand.id);
+        if (standErr) {
+          toast.error(`Aktivitet sparad men kunde inte uppdatera ${stand.name}: ${standErr.message}`);
         }
       }
+      await supabase.from("forest_activities").update({ plan_updated: true } as any).eq("id", (inserted as any).id);
     }
 
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
     queryClient.invalidateQueries({ queryKey: ["stands"] });
-    toast.success(createdCount > 1 ? `${createdCount} aktiviteter skapade` : "Aktivitet skapad");
+    toast.success(allStandIds.length > 1 ? `Aktivitet skapad (kopplad till ${allStandIds.length} bestånd)` : "Aktivitet skapad");
     setNewAct(emptyActivityForm);
     setExtraStandIds([]);
     setActDialogOpen(false);
