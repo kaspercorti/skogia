@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { useProperties, useStands, useForestActivities, useTransactions, fmt as fmtKr } from "@/hooks/useSkogskollData";
 import CarbonCreditsSection from "@/components/forest/CarbonCreditsSection";
+import PropertyMapButton from "@/components/forest/PropertyMapButton";
 import ActivityFormFields, { emptyActivityForm, HARVEST_TYPES, type ActivityFormData } from "@/components/forest/ActivityFormFields";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
@@ -1249,6 +1250,8 @@ export default function Skogsbruksplan() {
                     <MapPin className="h-4 w-4 text-primary" />
                     <p className="text-sm font-semibold text-card-foreground">{p.name}</p>
                   </div>
+                  <div className="flex items-center gap-1">
+                  <PropertyMapButton propertyId={p.id} propertyName={p.name} mapUrl={(p as any).map_image_url} />
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
@@ -1270,6 +1273,7 @@ export default function Skogsbruksplan() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
+                  </div>
                 </div>
                 <p className="text-xs text-muted-foreground">{p.municipality || "—"}</p>
                 <div className="flex gap-4 mt-2 text-xs text-muted-foreground">

@@ -515,6 +515,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          map_image_url: string | null
           municipality: string | null
           name: string
           productive_forest_ha: number
@@ -525,6 +526,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          map_image_url?: string | null
           municipality?: string | null
           name: string
           productive_forest_ha?: number
@@ -535,6 +537,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          map_image_url?: string | null
           municipality?: string | null
           name?: string
           productive_forest_ha?: number
