@@ -312,6 +312,27 @@ export type Database = {
           },
         ]
       }
+      forest_activity_stands: {
+        Row: {
+          activity_id: string
+          created_at: string
+          id: string
+          stand_id: string
+        }
+        Insert: {
+          activity_id: string
+          created_at?: string
+          id?: string
+          stand_id: string
+        }
+        Update: {
+          activity_id?: string
+          created_at?: string
+          id?: string
+          stand_id?: string
+        }
+        Relationships: []
+      }
       forest_plan_imports: {
         Row: {
           approved_at: string | null
