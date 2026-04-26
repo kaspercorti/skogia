@@ -48,7 +48,7 @@ export default function AppSidebar() {
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.label}>
                   <SidebarMenuButton asChild isActive={location.pathname === item.url}>
-                    <NavLink to={item.url} end>
+                    <NavLink to={item.url} end onClick={handleNavClick}>
                       <item.icon className="h-5 w-5 shrink-0" />
                       {!collapsed && <span>{item.label}</span>}
                     </NavLink>
