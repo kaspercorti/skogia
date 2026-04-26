@@ -1249,6 +1249,8 @@ export default function Skogsbruksplan() {
                     <MapPin className="h-4 w-4 text-primary" />
                     <p className="text-sm font-semibold text-card-foreground">{p.name}</p>
                   </div>
+                  <div className="flex items-center gap-1">
+                  <PropertyMapButton propertyId={p.id} propertyName={p.name} mapUrl={(p as any).map_image_url} />
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
