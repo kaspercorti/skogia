@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Översikt", url: "/" },
