@@ -1099,7 +1099,7 @@ export default function Skogsbruksplan() {
                   <div className="flex items-center justify-between">
                     <Label>Bestånd {(() => {
                       const sel = (newAct.stand_id && newAct.stand_id !== "none" ? 1 : 0) + extraStandIds.length;
-                      return sel > 1 ? <span className="text-xs text-muted-foreground font-normal">({sel} valda – belopp/volymer fördelas efter areal)</span> : null;
+                      return sel > 1 ? <span className="text-xs text-muted-foreground font-normal">({sel} valda – en gemensam aktivitet sparas)</span> : null;
                     })()}</Label>
                     {newAct.property_id && standsForAct.length > 0 && (
                       <button type="button" className="text-xs text-primary hover:underline" onClick={() => {
