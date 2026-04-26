@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Översikt", url: "/" },
@@ -21,10 +22,15 @@ const navItems = [
 ];
 
 export default function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { signOut, user } = useAuth();
+  const isMobile = useIsMobile();
+
+  const handleNavClick = () => {
+    if (isMobile) setOpenMobile(false);
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -42,7 +48,7 @@ export default function AppSidebar() {
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.label}>
                   <SidebarMenuButton asChild isActive={location.pathname === item.url}>
-                    <NavLink to={item.url} end>
+                    <NavLink to={item.url} end onClick={handleNavClick}>
                       <item.icon className="h-5 w-5 shrink-0" />
                       {!collapsed && <span>{item.label}</span>}
                     </NavLink>
