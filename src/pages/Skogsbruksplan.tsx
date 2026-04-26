@@ -1272,6 +1272,7 @@ export default function Skogsbruksplan() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
+                  </div>
                 </div>
                 <p className="text-xs text-muted-foreground">{p.municipality || "—"}</p>
                 <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
