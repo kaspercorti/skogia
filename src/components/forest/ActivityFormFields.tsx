@@ -110,15 +110,21 @@ interface Props {
   data: ActivityFormData;
   onChange: (data: ActivityFormData) => void;
   stands: Stand[];
+  extraStandIds?: string[];
 }
 
-export default function ActivityFormFields({ data, onChange, stands }: Props) {
+export default function ActivityFormFields({ data, onChange, stands, extraStandIds = [] }: Props) {
   const category = getFieldCategory(data.type);
   if (!category) return null;
 
   const set = (patch: Partial<ActivityFormData>) => onChange({ ...data, ...patch });
 
-  const selectedStand = data.stand_id && data.stand_id !== "none" ? stands.find(s => s.id === data.stand_id) : null;
+  const selectedStandIds = Array.from(new Set([
+    ...(data.stand_id && data.stand_id !== "none" ? [data.stand_id] : []),
+    ...extraStandIds.filter(Boolean),
+  ]));
+  const selectedStands = selectedStandIds.map(id => stands.find(s => s.id === id)).filter(Boolean) as Stand[];
+  const selectedStand = selectedStands[0] ?? null;
 
   return (
     <div className="rounded-lg border border-border p-3 space-y-3">
@@ -133,18 +139,21 @@ export default function ActivityFormFields({ data, onChange, stands }: Props) {
       {category === "description_cost" && <DescriptionCostFields data={data} set={set} isOvrigt={data.type === "övrigt"} showSubsidy={["naturvårdande skötsel", "naturvårdsåtgärd"].includes(data.type)} />}
 
       {/* Impact preview for harvest types */}
-      {category === "volume" && data.is_completed && selectedStand && Number(data.harvested_volume_m3sk) > 0 && (() => {
-        const currentVol = selectedStand.volume_m3sk ?? 0;
+      {category === "volume" && data.is_completed && selectedStands.length > 0 && Number(data.harvested_volume_m3sk) > 0 && (() => {
+        const currentVol = selectedStands.reduce((sum, s) => sum + (s.volume_m3sk ?? 0), 0);
         const harvested = Number(data.harvested_volume_m3sk) || 0;
         const newVol = currentVol - harvested;
         const overLimit = harvested > currentVol;
+        const label = selectedStands.length > 1
+          ? `Påverkan på ${selectedStands.length} bestånd (summerat)`
+          : `Påverkan på bestånd: ${selectedStands[0].name}`;
         return (
           <div className={cn("rounded-md p-2 text-xs space-y-0.5", overLimit ? "bg-destructive/10 border border-destructive/30" : "bg-muted/50")}>
-            <p className="font-semibold text-muted-foreground mb-1">Påverkan på bestånd: {selectedStand.name}</p>
-            <div className="flex justify-between"><span className="text-muted-foreground">Nuvarande virkesförråd:</span><span className="text-foreground">{fmt(currentVol)} m³sk</span></div>
+            <p className="font-semibold text-muted-foreground mb-1">{label}</p>
+            <div className="flex justify-between"><span className="text-muted-foreground">{selectedStands.length > 1 ? "Summa virkesförråd:" : "Nuvarande virkesförråd:"}</span><span className="text-foreground">{fmt(currentVol)} m³sk</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Uttag:</span><span className="text-foreground">−{fmt(harvested)} m³sk</span></div>
             <div className={cn("flex justify-between border-t border-border pt-0.5 font-semibold", overLimit ? "text-destructive" : "text-primary")}>
-              <span>Kvar i beståndet:</span><span>{fmt(Math.max(0, newVol))} m³sk</span>
+              <span>{selectedStands.length > 1 ? "Kvar totalt:" : "Kvar i beståndet:"}</span><span>{fmt(Math.max(0, newVol))} m³sk</span>
             </div>
             {overLimit && <p className="text-destructive font-medium mt-1">⚠ Uttaget överstiger tillgängligt virkesförråd!</p>}
           </div>
