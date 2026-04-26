@@ -1104,7 +1104,7 @@ export default function Skogsbruksplan() {
               <div className="grid gap-4 py-2">
                 <div className="space-y-1.5">
                   <Label>Fastighet *</Label>
-                  <Select value={newAct.property_id} onValueChange={v => setNewAct({ ...newAct, property_id: v, stand_id: "" })}>
+                  <Select value={newAct.property_id} onValueChange={v => { setNewAct({ ...newAct, property_id: v, stand_id: "" }); setExtraStandIds([]); }}>
                     <SelectTrigger><SelectValue placeholder="Välj fastighet..." /></SelectTrigger>
                     <SelectContent>
                       {properties.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
@@ -1112,14 +1112,82 @@ export default function Skogsbruksplan() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Bestånd</Label>
-                  <Select value={newAct.stand_id} onValueChange={v => setNewAct({ ...newAct, stand_id: v })} disabled={!newAct.property_id}>
-                    <SelectTrigger><SelectValue placeholder={newAct.property_id ? "Välj bestånd..." : "Välj fastighet först"} /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Inget specifikt</SelectItem>
-                      {standsForAct.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center justify-between">
+                    <Label>Bestånd {(() => {
+                      const sel = (newAct.stand_id && newAct.stand_id !== "none" ? 1 : 0) + extraStandIds.length;
+                      return sel > 1 ? <span className="text-xs text-muted-foreground font-normal">({sel} valda – belopp/volymer fördelas efter areal)</span> : null;
+                    })()}</Label>
+                    {newAct.property_id && standsForAct.length > 0 && (
+                      <button type="button" className="text-xs text-primary hover:underline" onClick={() => {
+                        const allIds = standsForAct.map(s => s.id);
+                        const allSelected = newAct.stand_id && allIds.every(id => id === newAct.stand_id || extraStandIds.includes(id));
+                        if (allSelected) {
+                          setNewAct({ ...newAct, stand_id: "" });
+                          setExtraStandIds([]);
+                        } else {
+                          setNewAct({ ...newAct, stand_id: allIds[0] });
+                          setExtraStandIds(allIds.slice(1));
+                        }
+                      }}>
+                        {(() => {
+                          const allIds = standsForAct.map(s => s.id);
+                          const allSelected = newAct.stand_id && allIds.every(id => id === newAct.stand_id || extraStandIds.includes(id));
+                          return allSelected ? "Avmarkera alla" : "Välj alla";
+                        })()}
+                      </button>
+                    )}
+                  </div>
+                  {!newAct.property_id ? (
+                    <div className="rounded-md border border-input bg-muted/30 px-3 py-2 text-sm text-muted-foreground">Välj fastighet först</div>
+                  ) : standsForAct.length === 0 ? (
+                    <div className="rounded-md border border-input bg-muted/30 px-3 py-2 text-sm text-muted-foreground">Inga bestånd på denna fastighet</div>
+                  ) : (
+                    <div className="rounded-md border border-input bg-background max-h-48 overflow-y-auto divide-y divide-border">
+                      <label className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-muted/50">
+                        <input
+                          type="checkbox"
+                          className="rounded border-input h-4 w-4 accent-primary"
+                          checked={!newAct.stand_id || newAct.stand_id === "none"}
+                          onChange={() => { setNewAct({ ...newAct, stand_id: "none" }); setExtraStandIds([]); }}
+                        />
+                        <span className="text-muted-foreground">Inget specifikt bestånd</span>
+                      </label>
+                      {standsForAct.map(s => {
+                        const checked = newAct.stand_id === s.id || extraStandIds.includes(s.id);
+                        return (
+                          <label key={s.id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-muted/50">
+                            <input
+                              type="checkbox"
+                              className="rounded border-input h-4 w-4 accent-primary"
+                              checked={checked}
+                              onChange={() => {
+                                if (checked) {
+                                  // Avmarkera
+                                  if (newAct.stand_id === s.id) {
+                                    // Flytta upp ett extra bestånd till primary om sådant finns
+                                    const next = extraStandIds[0];
+                                    setNewAct({ ...newAct, stand_id: next || "" });
+                                    setExtraStandIds(extraStandIds.slice(1));
+                                  } else {
+                                    setExtraStandIds(extraStandIds.filter(id => id !== s.id));
+                                  }
+                                } else {
+                                  // Markera
+                                  if (!newAct.stand_id || newAct.stand_id === "none") {
+                                    setNewAct({ ...newAct, stand_id: s.id });
+                                  } else {
+                                    setExtraStandIds([...extraStandIds, s.id]);
+                                  }
+                                }
+                              }}
+                            />
+                            <span className="flex-1">{s.name}</span>
+                            <span className="text-xs text-muted-foreground">{s.area_ha} ha</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
