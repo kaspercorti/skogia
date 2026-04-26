@@ -31,25 +31,27 @@ function AppRoutes() {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background text-foreground pt-[var(--app-safe-top)]">
+      <div className="flex h-[100dvh] w-full overflow-hidden bg-background text-foreground pt-[var(--app-safe-top)]">
         <AppSidebar />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="relative z-20 flex h-14 items-center border-b border-border px-3">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <header className="relative z-20 flex h-14 shrink-0 items-center border-b border-border px-3">
             <SidebarTrigger className="h-12 w-12 shrink-0 touch-manipulation rounded-md" />
             <span className="ml-2 font-display text-lg text-foreground">Skogia</span>
           </header>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/index" element={<Index />} />
-            <Route path="/bokforing" element={<Bokforing />} />
-            <Route path="/fakturering" element={<Fakturering />} />
-            <Route path="/skogsbruksplan" element={<Skogsbruksplan />} />
-            <Route path="/prognoser" element={<Prognoser />} />
-            <Route path="/skatteplanering" element={<Skatteplanering />} />
-            <Route path="/rapporter" element={<Rapporter />} />
-            <Route path="/integrationer" element={<Integrationer />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/index" element={<Index />} />
+              <Route path="/bokforing" element={<Bokforing />} />
+              <Route path="/fakturering" element={<Fakturering />} />
+              <Route path="/skogsbruksplan" element={<Skogsbruksplan />} />
+              <Route path="/prognoser" element={<Prognoser />} />
+              <Route path="/skatteplanering" element={<Skatteplanering />} />
+              <Route path="/rapporter" element={<Rapporter />} />
+              <Route path="/integrationer" element={<Integrationer />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
         </div>
       </div>
     </SidebarProvider>
