@@ -110,15 +110,21 @@ interface Props {
   data: ActivityFormData;
   onChange: (data: ActivityFormData) => void;
   stands: Stand[];
+  extraStandIds?: string[];
 }
 
-export default function ActivityFormFields({ data, onChange, stands }: Props) {
+export default function ActivityFormFields({ data, onChange, stands, extraStandIds = [] }: Props) {
   const category = getFieldCategory(data.type);
   if (!category) return null;
 
   const set = (patch: Partial<ActivityFormData>) => onChange({ ...data, ...patch });
 
-  const selectedStand = data.stand_id && data.stand_id !== "none" ? stands.find(s => s.id === data.stand_id) : null;
+  const selectedStandIds = Array.from(new Set([
+    ...(data.stand_id && data.stand_id !== "none" ? [data.stand_id] : []),
+    ...extraStandIds.filter(Boolean),
+  ]));
+  const selectedStands = selectedStandIds.map(id => stands.find(s => s.id === id)).filter(Boolean) as Stand[];
+  const selectedStand = selectedStands[0] ?? null;
 
   return (
     <div className="rounded-lg border border-border p-3 space-y-3">
