@@ -1,9 +1,5 @@
 {
   "appId": "app.lovable.bd1937e2542b437597f89e336b167377",
   "appName": "skogia",
-  "webDir": "dist",
-  "server": {
-    "url": "https://bd1937e2-542b-4375-97f8-9e336b167377.lovableproject.com?forceHideBadge=true",
-    "cleartext": true
-  }
+  "webDir": "dist"
 }
