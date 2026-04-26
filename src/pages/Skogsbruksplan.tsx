@@ -75,6 +75,8 @@ export default function Skogsbruksplan() {
   const [editStand, setEditStand] = useState(emptyStand);
   // New activity form
   const [newAct, setNewAct] = useState<ActivityFormData>(emptyActivityForm);
+  // Extra bestånd vid skapande av aktivitet (utöver newAct.stand_id)
+  const [extraStandIds, setExtraStandIds] = useState<string[]>([]);
 
   const selected = stands.find(b => b.id === selectedId);
   const fmt = (n: number) => n.toLocaleString("sv-SE");
