@@ -1221,6 +1221,7 @@ export default function Skogsbruksplan() {
                     data={newAct}
                     onChange={setNewAct}
                     stands={standsForAct}
+                    extraStandIds={extraStandIds}
                   />
                 )}
 
