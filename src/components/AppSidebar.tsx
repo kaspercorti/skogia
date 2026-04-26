@@ -28,7 +28,7 @@ export default function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
+      <SidebarHeader className="border-b border-sidebar-border px-4 py-4 pt-[calc(var(--app-safe-top)+1rem)]">
         <div className="flex items-center gap-2">
           <TreePine className="h-7 w-7 shrink-0 text-sidebar-primary" />
           {!collapsed && <span className="font-display text-xl tracking-wide text-sidebar-accent-foreground">Skogia</span>}
