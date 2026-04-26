@@ -31,11 +31,11 @@ function AppRoutes() {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background text-foreground pt-[env(safe-area-inset-top)]">
+      <div className="flex min-h-screen w-full bg-background text-foreground pt-[var(--app-safe-top)]">
         <AppSidebar />
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="relative z-20 flex h-14 items-center border-b border-border px-3">
-            <SidebarTrigger className="h-11 w-11 shrink-0" />
+            <SidebarTrigger className="h-12 w-12 shrink-0 touch-manipulation rounded-md" />
             <span className="ml-2 font-display text-lg text-foreground">Skogia</span>
           </header>
           <Routes>
