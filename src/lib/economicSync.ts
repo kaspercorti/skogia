@@ -290,6 +290,266 @@ export async function deleteActivityEconomicImpact(userId: string, activityId: s
   await cleanupForActivity(userId, activityId);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Generic helpers (Etapp 4): receipts, manual transactions, invoice payments
+// All flow through economic_events so dashboard / reports stay consistent.
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function adjustBank(bankAccountId: string | null, delta: number) {
+  if (!bankAccountId || delta === 0) return;
+  const { data: bank } = await supabase
+    .from("bank_accounts")
+    .select("current_balance")
+    .eq("id", bankAccountId)
+    .maybeSingle();
+  if (bank) {
+    await supabase
+      .from("bank_accounts")
+      .update({ current_balance: Number(bank.current_balance) + delta })
+      .eq("id", bankAccountId);
+  }
+}
+
+async function pickDefaultBankId(userId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("bank_accounts")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("is_connected", true)
+    .limit(1);
+  return data?.[0]?.id ?? null;
+}
+
+export interface ManualTxParams {
+  userId: string;
+  date: string;
+  type: "income" | "expense";
+  amount: number; // ex VAT base for the event
+  vatAmount: number;
+  category: string | null;
+  description: string;
+  propertyId?: string | null;
+  standId?: string | null;
+  paymentStatus?: PaymentStatus; // default not_paid for income, paid_to_bank for expense
+  bankAccountId?: string | null;
+  applyVat?: boolean;
+}
+
+/**
+ * Manual bookkeeping entry: writes BOTH a transaction AND an economic_event,
+ * and adjusts bank balance only when payment_status === paid_to_bank.
+ */
+export async function recordManualTransaction(p: ManualTxParams): Promise<{ ok: boolean; error?: string; transactionId?: string }> {
+  const status: PaymentStatus = p.paymentStatus ?? (p.type === "expense" ? "paid_to_bank" : "not_paid");
+  const isBank = status === "paid_to_bank";
+  const taxYear = taxYearOf(p.date);
+
+  const { data: tx, error: txErr } = await supabase
+    .from("transactions")
+    .insert({
+      user_id: p.userId,
+      date: p.date,
+      type: p.type,
+      category: p.category,
+      description: p.description,
+      amount: p.amount,
+      vat_amount: p.vatAmount,
+      property_id: p.propertyId ?? null,
+      stand_id: p.standId ?? null,
+      payment_method: isBank ? "bank" : "väntar",
+      status: isBank || status === "historical_already_paid" ? "booked" : "pending",
+    })
+    .select("id")
+    .single();
+  if (txErr) return { ok: false, error: txErr.message };
+
+  const { error: evErr } = await supabase.from("economic_events").insert({
+    user_id: p.userId,
+    type: p.type === "income" ? "income" : "expense",
+    source_type: "manual",
+    source_id: tx.id,
+    transaction_id: tx.id,
+    bank_account_id: isBank ? (p.bankAccountId ?? null) : null,
+    property_id: p.propertyId ?? null,
+    stand_id: p.standId ?? null,
+    amount: p.amount,
+    vat_amount: p.vatAmount,
+    date: p.date,
+    tax_year: taxYear,
+    affects_result: true,
+    affects_bank_balance: isBank,
+    affects_tax: true,
+    affects_forest_plan: false,
+    payment_status: status,
+    category: p.category,
+    description: p.description,
+  });
+  if (evErr) return { ok: false, error: evErr.message };
+
+  if (isBank) {
+    const totalCash = p.amount + p.vatAmount;
+    const delta = p.type === "income" ? totalCash : -totalCash;
+    const bankId = p.bankAccountId ?? (await pickDefaultBankId(p.userId));
+    await adjustBank(bankId, delta);
+  }
+
+  return { ok: true, transactionId: tx.id };
+}
+
+export interface ReceiptApproveParams {
+  userId: string;
+  receiptId: string;
+  date: string;
+  supplierName: string;
+  amountExVat: number;
+  vatAmount: number;
+  totalAmount: number;
+  category: string | null;
+  propertyId?: string | null;
+  paymentMethod: string;
+  bankAccountId?: string | null;
+  paid?: boolean; // default true (kvitto = redan betalt)
+}
+
+/**
+ * Approve a receipt: marks receipt booked, creates transaction + event,
+ * and adjusts bank balance if paid via card/bank/swish.
+ */
+export async function recordReceiptApproval(p: ReceiptApproveParams): Promise<{ ok: boolean; error?: string }> {
+  const paid = p.paid ?? true;
+  const status: PaymentStatus = paid ? "paid_to_bank" : "not_paid";
+
+  const txRes = await recordManualTransaction({
+    userId: p.userId,
+    date: p.date,
+    type: "expense",
+    amount: p.amountExVat,
+    vatAmount: p.vatAmount,
+    category: p.category,
+    description: `Kvitto från ${p.supplierName || "okänd"}`,
+    propertyId: p.propertyId,
+    paymentStatus: status,
+    bankAccountId: p.bankAccountId,
+  });
+  if (!txRes.ok) return txRes;
+
+  const { error } = await supabase
+    .from("receipts")
+    .update({
+      status: "booked",
+      approved_at: new Date().toISOString(),
+      approved_by: p.userId,
+      linked_transaction_id: txRes.transactionId,
+    })
+    .eq("id", p.receiptId);
+  if (error) return { ok: false, error: error.message };
+
+  return { ok: true };
+}
+
+export interface InvoicePaymentParams {
+  userId: string;
+  invoiceId: string;
+  paymentDate: string;
+  bankAccountId?: string | null;
+}
+
+/**
+ * Mark invoice paid → transaction + economic_event (forest_sale-style income),
+ * bank balance updated. Idempotent guard: refuse if a transaction exists.
+ */
+export async function recordInvoicePayment(p: InvoicePaymentParams): Promise<{ ok: boolean; error?: string }> {
+  const { data: invoice, error: invErr } = await supabase
+    .from("invoices")
+    .select("*")
+    .eq("id", p.invoiceId)
+    .maybeSingle();
+  if (invErr || !invoice) return { ok: false, error: "Hittar inte fakturan" };
+
+  const { data: existing } = await supabase
+    .from("transactions")
+    .select("id")
+    .eq("invoice_id", p.invoiceId)
+    .limit(1);
+  if (existing && existing.length > 0) return { ok: false, error: "Transaktion finns redan för denna faktura" };
+
+  const taxYear = taxYearOf(p.paymentDate);
+  const bankId = p.bankAccountId ?? (await pickDefaultBankId(p.userId));
+
+  const { data: tx, error: txErr } = await supabase
+    .from("transactions")
+    .insert({
+      user_id: p.userId,
+      date: p.paymentDate,
+      type: "income",
+      category: invoice.category || "virkesförsäljning",
+      description: `Betald faktura #${invoice.invoice_number}${invoice.description ? " – " + invoice.description : ""}`,
+      amount: Number(invoice.amount_ex_vat),
+      vat_amount: Number(invoice.vat_amount),
+      invoice_id: invoice.id,
+      property_id: invoice.property_id,
+      payment_method: "bank",
+      status: "booked",
+    })
+    .select("id")
+    .single();
+  if (txErr) return { ok: false, error: txErr.message };
+
+  await supabase.from("economic_events").insert({
+    user_id: p.userId,
+    type: "income",
+    source_type: "invoice",
+    source_id: invoice.id,
+    invoice_id: invoice.id,
+    transaction_id: tx.id,
+    bank_account_id: bankId,
+    property_id: invoice.property_id,
+    amount: Number(invoice.amount_ex_vat),
+    vat_amount: Number(invoice.vat_amount),
+    date: p.paymentDate,
+    tax_year: taxYear,
+    affects_result: true,
+    affects_bank_balance: true,
+    affects_tax: true,
+    affects_forest_plan: false,
+    payment_status: "paid_to_bank",
+    category: invoice.category || "virkesförsäljning",
+    description: `Betald faktura #${invoice.invoice_number}`,
+  });
+
+  await supabase
+    .from("invoices")
+    .update({ status: "paid", payment_date: p.paymentDate } as any)
+    .eq("id", invoice.id);
+
+  await adjustBank(bankId, Number(invoice.amount_inc_vat));
+  return { ok: true };
+}
+
+/**
+ * Reverse an invoice payment: removes transaction + event, restores invoice + bank.
+ */
+export async function reverseInvoicePayment(userId: string, invoiceId: string): Promise<{ ok: boolean; error?: string }> {
+  const { data: invoice } = await supabase.from("invoices").select("*").eq("id", invoiceId).maybeSingle();
+  if (!invoice) return { ok: false, error: "Hittar inte fakturan" };
+
+  // Find linked event for bank account ref
+  const { data: events } = await supabase
+    .from("economic_events")
+    .select("id, bank_account_id")
+    .eq("invoice_id", invoiceId);
+  const bankId = events?.[0]?.bank_account_id ?? (await pickDefaultBankId(userId));
+
+  await supabase.from("transactions").delete().eq("invoice_id", invoiceId);
+  await supabase.from("economic_events").delete().eq("invoice_id", invoiceId);
+  await supabase
+    .from("invoices")
+    .update({ status: "unpaid", payment_date: null } as any)
+    .eq("id", invoiceId);
+  await adjustBank(bankId, -Number(invoice.amount_inc_vat));
+  return { ok: true };
+}
+
 /**
  * Withdraw from a forest liquidity account → goes to bank, creates taxable event for the year of withdrawal.
  */
