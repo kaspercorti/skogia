@@ -625,6 +625,13 @@ export default function Skogsbruksplan() {
       }
     }
 
+    // Tvinga val av betalningshantering om aktiviteten är genomförd och har ekonomi
+    const editHasMoney = finalIncome > 0 || cost > 0 || subsidyAmt > 0;
+    if (nowCompleted && editHasMoney && !editAct.payment_status) {
+      toast.error("Välj hur betalningen hanterades");
+      return;
+    }
+
     const { error } = await supabase.from("forest_activities").update({
       property_id: editAct.property_id,
       stand_id: editAct.stand_id && editAct.stand_id !== "none" ? editAct.stand_id : null,
