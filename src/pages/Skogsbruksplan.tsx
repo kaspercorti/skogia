@@ -414,6 +414,22 @@ export default function Skogsbruksplan() {
       await supabase.from("forest_activities").update({ plan_updated: true } as any).eq("id", (inserted as any).id);
     }
 
+    // Synka bokföring (intäkt/kostnad/bidrag) om aktiviteten är genomförd
+    await syncActivityTransactions({
+      activityId: (inserted as any).id,
+      propertyId: newAct.property_id,
+      standId: primaryForRow,
+      type: newAct.type === "övrigt" && newAct.custom_type ? newAct.custom_type : newAct.type,
+      isCompleted: !!newAct.is_completed,
+      completedDate: newAct.is_completed ? (newAct.completed_date || new Date().toISOString().slice(0, 10)) : null,
+      plannedDate: newAct.planned_date || null,
+      income: finalIncome,
+      cost: costInput,
+      subsidyAmount: subsidyInput,
+      hasSubsidy: !!newAct.has_subsidy,
+      notes: newAct.notes || null,
+    });
+
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
     queryClient.invalidateQueries({ queryKey: ["stands"] });
     toast.success(allStandIds.length > 1 ? `Aktivitet skapad (kopplad till ${allStandIds.length} bestånd)` : "Aktivitet skapad");
