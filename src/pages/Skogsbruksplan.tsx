@@ -320,6 +320,13 @@ export default function Skogsbruksplan() {
       }
     }
 
+    // Tvinga val av betalningshantering om aktiviteten är genomförd och har ekonomi
+    const hasMoney = finalIncome > 0 || costInput > 0 || subsidyInput > 0;
+    if (newAct.is_completed && hasMoney && !newAct.payment_status) {
+      toast.error("Välj hur betalningen hanterades");
+      return;
+    }
+
     // Skapa EN aktivitet, kopplad till primärt bestånd (för bakåtkompatibilitet).
     const primaryForRow = allStandIds[0] ?? null;
     const { data: inserted, error } = await supabase.from("forest_activities").insert({
