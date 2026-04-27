@@ -684,6 +684,22 @@ export default function Skogsbruksplan() {
       }
     }
 
+    // Synka bokföring efter uppdatering
+    await syncActivityTransactions({
+      activityId: editActId,
+      propertyId: editAct.property_id,
+      standId: editAct.stand_id && editAct.stand_id !== "none" ? editAct.stand_id : null,
+      type: editAct.type === "övrigt" && editAct.custom_type ? editAct.custom_type : editAct.type,
+      isCompleted: !!editAct.is_completed,
+      completedDate: editAct.is_completed ? (editAct.completed_date || new Date().toISOString().slice(0, 10)) : null,
+      plannedDate: editAct.planned_date || null,
+      income: finalIncome,
+      cost: cost,
+      subsidyAmount: subsidyAmt,
+      hasSubsidy: !!editAct.has_subsidy,
+      notes: editAct.notes || null,
+    });
+
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
     queryClient.invalidateQueries({ queryKey: ["stands"] });
     toast.success("Aktivitet uppdaterad");
