@@ -17,6 +17,8 @@ import { useProperties, useStands, useForestActivities, useTransactions, fmt as 
 import CarbonCreditsSection from "@/components/forest/CarbonCreditsSection";
 import PropertyMapButton from "@/components/forest/PropertyMapButton";
 import ActivityFormFields, { emptyActivityForm, HARVEST_TYPES, type ActivityFormData } from "@/components/forest/ActivityFormFields";
+import ActivityPaymentSection from "@/components/forest/ActivityPaymentSection";
+import { syncActivityEconomicImpact, deleteActivityEconomicImpact, type PaymentStatus } from "@/lib/economicSync";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
