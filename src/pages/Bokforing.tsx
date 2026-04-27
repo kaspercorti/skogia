@@ -62,29 +62,33 @@ export default function Bokforing() {
 
   const handleAdd = async () => {
     if (!newTx.description || !newTx.amount || !user) return;
-    const amount = Math.abs(Number(newTx.amount));
+    const total = Math.abs(Number(newTx.amount));
     const vatPercent = Number(newTx.vat_amount);
-    const vatAmount = Math.round(amount * vatPercent / (100 + vatPercent));
-    
-    const { error } = await supabase.from("transactions").insert({
-      user_id: user.id,
+    const vatAmount = Math.round(total * vatPercent / (100 + vatPercent));
+    const exVat = total - vatAmount;
+
+    const { recordManualTransaction } = await import("@/lib/economicSync");
+    const res = await recordManualTransaction({
+      userId: user.id,
       date: newTx.date,
-      description: newTx.description,
-      amount,
       type: newTx.type,
+      amount: exVat,
+      vatAmount,
       category: newTx.category || null,
-      property_id: newTx.property_id || null,
-      vat_amount: vatAmount,
-      status: "booked",
+      description: newTx.description,
+      propertyId: newTx.property_id || null,
+      paymentStatus: "paid_to_bank",
     });
 
-    if (error) {
-      toast.error("Kunde inte spara: " + error.message);
+    if (!res.ok) {
+      toast.error("Kunde inte spara: " + res.error);
       return;
     }
 
     queryClient.invalidateQueries({ queryKey: ["transactions"] });
-    toast.success("Transaktion sparad");
+    queryClient.invalidateQueries({ queryKey: ["economic_events"] });
+    queryClient.invalidateQueries({ queryKey: ["bank_accounts"] });
+    toast.success("Transaktion sparad och synkad");
     setNewTx({ date: new Date().toISOString().slice(0, 10), description: "", amount: "", type: "expense", category: "", property_id: "", vat_amount: "25" });
     setDialogOpen(false);
   };

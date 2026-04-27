@@ -79,65 +79,46 @@ export function ReceiptReviewDialog({ receipt, onClose }: Props) {
     if (!user) return;
     setSaving(true);
     try {
-      const amount = Math.abs(Number(form.amount_ex_vat));
+      const exVat = Math.abs(Number(form.amount_ex_vat));
       const vatAmount = Math.abs(Number(form.vat_amount));
+      const total = Math.abs(Number(form.total_amount));
 
-      // Create transaction
-      const { data: tx, error: txError } = await supabase
-        .from("transactions")
-        .insert({
-          user_id: user.id,
-          date: form.receipt_date,
-          type: "expense",
-          amount,
-          vat_amount: vatAmount,
-          category: form.suggested_category,
-          description: `Kvitto från ${form.supplier_name || "okänd"}`,
-          property_id: form.property_id || null,
-          payment_method: form.payment_method,
-          status: "booked",
-        })
-        .select()
-        .single();
-      if (txError) throw txError;
-
-      // Update receipt
-      const { error: rError } = await supabase
+      // Update receipt fields first (so values match what user edited)
+      await supabase
         .from("receipts")
         .update({
           supplier_name: form.supplier_name,
           receipt_date: form.receipt_date,
-          total_amount: Number(form.total_amount),
+          total_amount: total,
           vat_amount: vatAmount,
-          amount_ex_vat: amount,
+          amount_ex_vat: exVat,
           suggested_category: form.suggested_category,
           property_id: form.property_id || null,
           notes: form.notes,
-          status: "booked",
-          approved_at: new Date().toISOString(),
-          approved_by: user.id,
-          linked_transaction_id: tx.id,
         })
         .eq("id", receipt.id);
-      if (rError) throw rError;
 
-      // Update bank balance
-      const { data: bankAccounts } = await supabase
-        .from("bank_accounts")
-        .select("*")
-        .eq("user_id", user.id)
-        .limit(1);
-      if (bankAccounts && bankAccounts.length > 0) {
-        await supabase
-          .from("bank_accounts")
-          .update({ current_balance: bankAccounts[0].current_balance - Number(form.total_amount) })
-          .eq("id", bankAccounts[0].id);
-      }
+      const { recordReceiptApproval } = await import("@/lib/economicSync");
+      const res = await recordReceiptApproval({
+        userId: user.id,
+        receiptId: receipt.id,
+        date: form.receipt_date,
+        supplierName: form.supplier_name,
+        amountExVat: exVat,
+        vatAmount,
+        totalAmount: total,
+        category: form.suggested_category,
+        propertyId: form.property_id || null,
+        paymentMethod: form.payment_method,
+        paid: form.payment_method !== "invoice",
+      });
+      if (!res.ok) throw new Error(res.error);
 
       queryClient.invalidateQueries({ queryKey: ["receipts"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["bank_accounts"] });
-      toast.success("Kvitto godkänt och bokfört!");
+      queryClient.invalidateQueries({ queryKey: ["economic_events"] });
+      toast.success("Kvitto godkänt – synkat till bokföring, bank och rapporter");
       onClose();
     } catch (err: any) {
       toast.error("Kunde inte bokföra: " + err.message);
