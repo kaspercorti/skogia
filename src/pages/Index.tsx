@@ -1,43 +1,51 @@
-import { Wallet, TrendingUp, TreePine, Receipt, Calculator, CalendarClock, Zap, ArrowRight, ChevronRight, AlertTriangle, Clock, TrendingDown, Leaf } from "lucide-react";
+import { useState } from "react";
+import { Wallet, TrendingUp, TreePine, Receipt, Calculator, CalendarClock, Zap, ArrowRight, ChevronRight, AlertTriangle, TrendingDown, Leaf, PiggyBank } from "lucide-react";
 import StatCard from "@/components/dashboard/StatCard";
 import CashFlowChart from "@/components/dashboard/CashFlowChart";
 import ForestOverview from "@/components/dashboard/ForestOverview";
 import RecentTransactions from "@/components/dashboard/RecentTransactions";
 import { useNavigate } from "react-router-dom";
 import {
-  useProperties, useStands, useTransactions, useInvoices, useForestActivities,
-  useBankAccounts, useTaxAccounts,
-  fmt, calcSaldo, calcResultat, calcTotalArea, calcOpenInvoices, calcOverdueInvoices, calcUpcomingIncome, calcEstimatedTax,
+  useProperties, useStands, useInvoices, useForestActivities,
+  useBankAccounts,
+  fmt, calcTotalArea, calcOpenInvoices, calcOverdueInvoices, calcEstimatedTax,
 } from "@/hooks/useSkogskollData";
+import { useEconomicSummary, useAvailableYears, useForestLiquidityAccounts } from "@/hooks/useEconomicData";
 import { useLossCarryForwards, applyLossCarryForwards } from "@/hooks/useLossCarryForwards";
 import { useCarbonCredits } from "@/hooks/useCarbonCredits";
 
 export default function Index() {
   const navigate = useNavigate();
+  const [year, setYear] = useState<number>(new Date().getFullYear());
+
   const { data: properties = [] } = useProperties();
   const { data: stands = [] } = useStands();
-  const { data: transactions = [] } = useTransactions();
   const { data: invoices = [] } = useInvoices();
   const { data: activities = [] } = useForestActivities();
   const { data: bankAccounts = [] } = useBankAccounts();
-  const { data: taxAccounts = [] } = useTaxAccounts();
+  const { data: forestAccounts = [] } = useForestLiquidityAccounts();
   const { data: lossCarryForwards = [] } = useLossCarryForwards();
+  const { data: availableYears = [year] } = useAvailableYears();
+  const { summary } = useEconomicSummary(year);
   const carbon = useCarbonCredits(stands);
 
-  const year = new Date().getFullYear();
   const saldo = bankAccounts.reduce((s, a) => s + a.current_balance, 0);
-  const resultat = calcResultat(transactions, year);
+  const forestSaldo = forestAccounts.reduce((s, a) => s + Number(a.remaining_amount), 0);
+  const resultat = summary.result;
   const totalArea = calcTotalArea(properties);
   const openInvoiceAmount = calcOpenInvoices(invoices);
   const overdueInvoices = calcOverdueInvoices(invoices);
-  const upcomingIncome = calcUpcomingIncome(activities);
+  // Forward-looking income from planned activities (not yet realized as economic_events)
+  const plannedUpcoming = activities
+    .filter(a => a.status === "planned" && !a.is_completed)
+    .reduce((s, a) => s + a.estimated_income, 0);
+  // Receivables-like: events booked in result but not yet paid into bank for selected year
+  const upcomingFromEvents = summary.upcomingIncome;
 
-  // Apply loss carry-forwards to get correct tax estimate
-  const lossResult = applyLossCarryForwards(resultat, lossCarryForwards);
+  const lossResult = applyLossCarryForwards(summary.taxableResult, lossCarryForwards);
   const estimatedTax = calcEstimatedTax(lossResult.taxableResultat);
   const totalRemainingLoss = lossResult.remainingLosses;
 
-  // Find biggest planned activity for decision banner
   const biggestActivity = activities
     .filter(a => a.status === "planned")
     .sort((a, b) => b.estimated_income - a.estimated_income)[0];
@@ -46,13 +54,26 @@ export default function Index() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <header className="px-4 md:px-6 py-5 border-b border-border">
-        <h1 className="text-2xl font-display text-foreground">Översikt</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Din skogsverksamhet – beslut & status</p>
+      <header className="px-4 md:px-6 py-5 border-b border-border flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-display text-foreground">Översikt</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Din skogsverksamhet – beslut & status</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Räkenskapsår</span>
+          <select
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+            className="bg-card border border-border rounded-lg px-3 py-1.5 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            {availableYears.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
       </header>
 
       <main className="p-4 md:p-6 space-y-5 max-w-7xl">
-        {/* Decision banner */}
         {biggestActivity && (
           <div
             className="rounded-xl border-2 border-primary/30 bg-gradient-to-r from-primary/5 via-accent/5 to-primary/5 p-4 md:p-5 cursor-pointer hover:shadow-sm transition-all relative overflow-hidden"
@@ -73,25 +94,23 @@ export default function Index() {
           </div>
         )}
 
-        {/* Stat cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <StatCard icon={Wallet} title="Saldo" value={fmt(saldo)} change={`${bankAccounts.length} konton`} changeType="neutral" delay={0} />
-          <StatCard icon={TrendingUp} title={`Resultat ${year}`} value={fmt(resultat)} change={resultat >= 0 ? "Positivt" : "Negativt"} changeType={resultat >= 0 ? "positive" : "negative"} delay={50} />
-          <StatCard icon={TreePine} title="Skogsareal" value={`${totalArea.toFixed(1)} ha`} change={`${stands.length} bestånd`} changeType="neutral" delay={100} />
-          <StatCard icon={Receipt} title="Öppna fakturor" value={fmt(openInvoiceAmount)} change={`${invoices.filter(i => i.status === "unpaid" || i.status === "overdue").length} obetalda`} changeType="negative" delay={150} />
-          <StatCard icon={Calculator} title="Skatt (prognos)" value={fmt(estimatedTax)} change={`Beräknad ${year}`} changeType="neutral" delay={200} />
-          <StatCard icon={CalendarClock} title="Kommande intäkt" value={fmt(upcomingIncome)} change={`${activities.filter(a => a.status === "planned").length} planerade`} changeType="positive" delay={250} />
+          <StatCard icon={Wallet} title="Banksaldo" value={fmt(saldo)} change={`${bankAccounts.length} konton`} changeType="neutral" delay={0} />
+          <StatCard icon={PiggyBank} title="Skogslikvidkonto" value={fmt(forestSaldo)} change={`${forestAccounts.length} konton`} changeType="neutral" delay={50} />
+          <StatCard icon={TrendingUp} title={`Resultat ${year}`} value={fmt(resultat)} change={resultat >= 0 ? "Positivt" : "Negativt"} changeType={resultat >= 0 ? "positive" : "negative"} delay={100} />
+          <StatCard icon={TreePine} title="Skogsareal" value={`${totalArea.toFixed(1)} ha`} change={`${stands.length} bestånd`} changeType="neutral" delay={150} />
+          <StatCard icon={Receipt} title="Öppna fakturor" value={fmt(openInvoiceAmount)} change={`${invoices.filter(i => i.status === "unpaid" || i.status === "overdue").length} obetalda`} changeType="negative" delay={200} />
+          <StatCard icon={Calculator} title={`Skatt ${year}`} value={fmt(estimatedTax)} change="Prognos" changeType="neutral" delay={250} />
+          <StatCard icon={CalendarClock} title="Kommande intäkt" value={fmt(plannedUpcoming + upcomingFromEvents)} change={`${activities.filter(a => a.status === "planned").length} planerade`} changeType="positive" delay={300} />
           {totalRemainingLoss > 0 && (
-            <StatCard icon={TrendingDown} title="Underskott" value={fmt(totalRemainingLoss)} change={lossResult.lossUsed > 0 ? `${fmt(lossResult.lossUsed)} används ${year}` : "Kvar att använda"} changeType="neutral" delay={300} />
+            <StatCard icon={TrendingDown} title="Underskott" value={fmt(totalRemainingLoss)} change={lossResult.lossUsed > 0 ? `${fmt(lossResult.lossUsed)} används ${year}` : "Kvar att använda"} changeType="neutral" delay={350} />
           )}
           {carbon.totalAnnualCO2 > 0 && (
-            <StatCard icon={Leaf} title="CO₂-inlagring" value={`${carbon.totalAnnualCO2.toLocaleString("sv-SE")} ton/år`} change={`Potentiellt ${carbon.totalAnnualValue.toLocaleString("sv-SE")} kr/år`} changeType="positive" delay={350} />
+            <StatCard icon={Leaf} title="CO₂-inlagring" value={`${carbon.totalAnnualCO2.toLocaleString("sv-SE")} ton/år`} change={`Potentiellt ${carbon.totalAnnualValue.toLocaleString("sv-SE")} kr/år`} changeType="positive" delay={400} />
           )}
         </div>
 
-        {/* Action cards row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {/* Nästa åtgärd */}
           {activities.filter(a => a.status === "planned").length > 0 && (
             <div className="rounded-xl border border-border bg-card p-4 cursor-pointer hover:border-primary/30 transition-all" onClick={() => navigate("/skogsbruksplan")}>
               <div className="flex items-center gap-2 mb-2">
@@ -104,7 +123,6 @@ export default function Index() {
             </div>
           )}
 
-          {/* Förfallna fakturor */}
           {overdueInvoices.length > 0 && (
             <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 cursor-pointer hover:border-destructive/40 transition-all" onClick={() => navigate("/fakturering")}>
               <div className="flex items-center gap-2 mb-2">
@@ -117,7 +135,6 @@ export default function Index() {
             </div>
           )}
 
-          {/* Skatteoptimering */}
           <div className="rounded-xl border border-accent/20 bg-accent/5 p-4 cursor-pointer hover:border-accent/40 transition-all" onClick={() => navigate("/skatteplanering")}>
             <div className="flex items-center gap-2 mb-2">
               <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center"><Calculator className="h-4 w-4 text-accent" /></div>
@@ -129,13 +146,11 @@ export default function Index() {
           </div>
         </div>
 
-        {/* Charts + Forest */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <CashFlowChart />
           <ForestOverview />
         </div>
 
-        {/* Recent transactions */}
         <RecentTransactions />
       </main>
     </div>
