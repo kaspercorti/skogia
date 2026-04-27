@@ -459,10 +459,16 @@ export default function Skogsbruksplan() {
       }
     }
 
+    // Ta bort kopplade auto-genererade bokföringsrader
+    if (user) {
+      await supabase.from("transactions").delete().eq("user_id", user.id).like("description", `%[FA:${activityId}]%`);
+    }
+
     const { error } = await supabase.from("forest_activities").delete().eq("id", activityId);
     if (error) { toast.error("Kunde inte ta bort: " + error.message); return; }
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
     queryClient.invalidateQueries({ queryKey: ["stands"] });
+    queryClient.invalidateQueries({ queryKey: ["transactions"] });
     toast.success("Aktivitet borttagen");
   };
 
