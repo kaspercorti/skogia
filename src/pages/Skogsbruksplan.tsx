@@ -670,6 +670,13 @@ export default function Skogsbruksplan() {
       quantity_unit: editAct.quantity_unit || null,
       tree_species: editAct.tree_species || null,
       work_type: editAct.work_type || null,
+      payment_status: editAct.payment_status || "not_paid",
+      payment_date: editAct.payment_date || null,
+      bank_account_id: editAct.bank_account_id || null,
+      forest_account_id: editAct.forest_account_id || null,
+      apply_vat: !!editAct.apply_vat,
+      vat_rate: Number(editAct.vat_rate) || 0.25,
+      vat_amount: editAct.apply_vat ? Math.round(finalIncome * (Number(editAct.vat_rate) || 0.25)) : 0,
     } as any).eq("id", editActId);
     if (error) { toast.error("Kunde inte uppdatera: " + error.message); return; }
 
