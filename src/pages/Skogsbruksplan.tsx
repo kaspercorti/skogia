@@ -584,6 +584,7 @@ export default function Skogsbruksplan() {
       bank_account_id: (a as any).bank_account_id || "",
       forest_account_id: (a as any).forest_account_id || "",
       forest_account_new_name: "",
+    });
     setEditActDialogOpen(true);
   };
 
