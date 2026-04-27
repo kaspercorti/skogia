@@ -165,10 +165,99 @@ export type Database = {
         }
         Relationships: []
       }
+      economic_events: {
+        Row: {
+          activity_id: string | null
+          affects_bank_balance: boolean
+          affects_forest_plan: boolean
+          affects_result: boolean
+          affects_tax: boolean
+          amount: number
+          bank_account_id: string | null
+          category: string | null
+          created_at: string
+          date: string
+          description: string | null
+          forest_account_id: string | null
+          id: string
+          invoice_id: string | null
+          notes: string | null
+          payment_status: string
+          property_id: string | null
+          source_id: string | null
+          source_type: string
+          stand_id: string | null
+          tax_year: number
+          transaction_id: string | null
+          type: string
+          updated_at: string
+          user_id: string
+          vat_amount: number
+        }
+        Insert: {
+          activity_id?: string | null
+          affects_bank_balance?: boolean
+          affects_forest_plan?: boolean
+          affects_result?: boolean
+          affects_tax?: boolean
+          amount?: number
+          bank_account_id?: string | null
+          category?: string | null
+          created_at?: string
+          date?: string
+          description?: string | null
+          forest_account_id?: string | null
+          id?: string
+          invoice_id?: string | null
+          notes?: string | null
+          payment_status?: string
+          property_id?: string | null
+          source_id?: string | null
+          source_type: string
+          stand_id?: string | null
+          tax_year: number
+          transaction_id?: string | null
+          type: string
+          updated_at?: string
+          user_id: string
+          vat_amount?: number
+        }
+        Update: {
+          activity_id?: string | null
+          affects_bank_balance?: boolean
+          affects_forest_plan?: boolean
+          affects_result?: boolean
+          affects_tax?: boolean
+          amount?: number
+          bank_account_id?: string | null
+          category?: string | null
+          created_at?: string
+          date?: string
+          description?: string | null
+          forest_account_id?: string | null
+          id?: string
+          invoice_id?: string | null
+          notes?: string | null
+          payment_status?: string
+          property_id?: string | null
+          source_id?: string | null
+          source_type?: string
+          stand_id?: string | null
+          tax_year?: number
+          transaction_id?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+          vat_amount?: number
+        }
+        Relationships: []
+      }
       forest_activities: {
         Row: {
           affects_forest_plan: boolean
+          apply_vat: boolean
           area_ha: number | null
+          bank_account_id: string | null
           completed_date: string | null
           cost_per_ha: number | null
           cost_per_meter: number | null
@@ -179,12 +268,15 @@ export type Database = {
           estimated_net: number
           fertilizer_amount: number | null
           fertilizer_unit: string | null
+          forest_account_id: string | null
           harvested_volume_m3sk: number | null
           has_subsidy: boolean
           id: string
           is_completed: boolean
           length_meters: number | null
           notes: string | null
+          payment_date: string | null
+          payment_status: string
           plan_updated: boolean
           planned_date: string | null
           plant_count: number | null
@@ -206,12 +298,16 @@ export type Database = {
           tree_species: string | null
           type: string
           updated_at: string
+          vat_amount: number
+          vat_rate: number
           work_description: string | null
           work_type: string | null
         }
         Insert: {
           affects_forest_plan?: boolean
+          apply_vat?: boolean
           area_ha?: number | null
+          bank_account_id?: string | null
           completed_date?: string | null
           cost_per_ha?: number | null
           cost_per_meter?: number | null
@@ -222,12 +318,15 @@ export type Database = {
           estimated_net?: number
           fertilizer_amount?: number | null
           fertilizer_unit?: string | null
+          forest_account_id?: string | null
           harvested_volume_m3sk?: number | null
           has_subsidy?: boolean
           id?: string
           is_completed?: boolean
           length_meters?: number | null
           notes?: string | null
+          payment_date?: string | null
+          payment_status?: string
           plan_updated?: boolean
           planned_date?: string | null
           plant_count?: number | null
@@ -249,12 +348,16 @@ export type Database = {
           tree_species?: string | null
           type: string
           updated_at?: string
+          vat_amount?: number
+          vat_rate?: number
           work_description?: string | null
           work_type?: string | null
         }
         Update: {
           affects_forest_plan?: boolean
+          apply_vat?: boolean
           area_ha?: number | null
+          bank_account_id?: string | null
           completed_date?: string | null
           cost_per_ha?: number | null
           cost_per_meter?: number | null
@@ -265,12 +368,15 @@ export type Database = {
           estimated_net?: number
           fertilizer_amount?: number | null
           fertilizer_unit?: string | null
+          forest_account_id?: string | null
           harvested_volume_m3sk?: number | null
           has_subsidy?: boolean
           id?: string
           is_completed?: boolean
           length_meters?: number | null
           notes?: string | null
+          payment_date?: string | null
+          payment_status?: string
           plan_updated?: boolean
           planned_date?: string | null
           plant_count?: number | null
@@ -292,6 +398,8 @@ export type Database = {
           tree_species?: string | null
           type?: string
           updated_at?: string
+          vat_amount?: number
+          vat_rate?: number
           work_description?: string | null
           work_type?: string | null
         }
@@ -330,6 +438,63 @@ export type Database = {
           created_at?: string
           id?: string
           stand_id?: string
+        }
+        Relationships: []
+      }
+      forest_liquidity_accounts: {
+        Row: {
+          account_number_masked: string | null
+          bank_name: string | null
+          created_at: string
+          deposit_date: string
+          expiry_date: string | null
+          id: string
+          name: string
+          notes: string | null
+          opened_date: string
+          original_deposit_amount: number
+          remaining_amount: number
+          source_activity_id: string | null
+          source_transaction_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_number_masked?: string | null
+          bank_name?: string | null
+          created_at?: string
+          deposit_date?: string
+          expiry_date?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          opened_date?: string
+          original_deposit_amount?: number
+          remaining_amount?: number
+          source_activity_id?: string | null
+          source_transaction_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_number_masked?: string | null
+          bank_name?: string | null
+          created_at?: string
+          deposit_date?: string
+          expiry_date?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          opened_date?: string
+          original_deposit_amount?: number
+          remaining_amount?: number
+          source_activity_id?: string | null
+          source_transaction_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

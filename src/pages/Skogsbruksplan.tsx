@@ -17,6 +17,8 @@ import { useProperties, useStands, useForestActivities, useTransactions, fmt as 
 import CarbonCreditsSection from "@/components/forest/CarbonCreditsSection";
 import PropertyMapButton from "@/components/forest/PropertyMapButton";
 import ActivityFormFields, { emptyActivityForm, HARVEST_TYPES, type ActivityFormData } from "@/components/forest/ActivityFormFields";
+import ActivityPaymentSection from "@/components/forest/ActivityPaymentSection";
+import { syncActivityEconomicImpact, deleteActivityEconomicImpact, type PaymentStatus } from "@/lib/economicSync";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
@@ -237,66 +239,42 @@ export default function Skogsbruksplan() {
     subsidyAmount: number;
     hasSubsidy: boolean;
     notes: string | null;
+    paymentStatus: PaymentStatus;
+    paymentDate: string | null;
+    bankAccountId: string | null;
+    forestAccountId: string | null;
+    applyVat: boolean;
+    vatRate: number;
   }) => {
     if (!user) return;
-    const tag = `[FA:${params.activityId}]`;
-    // Ta bort tidigare auto-genererade rader för denna aktivitet
-    await supabase.from("transactions").delete().eq("user_id", user.id).like("description", `%${tag}%`);
-
-    if (!params.isCompleted) return;
-
-    const date = params.completedDate || params.plannedDate || new Date().toISOString().slice(0, 10);
-    const rows: any[] = [];
-    if (params.income > 0) {
-      rows.push({
-        user_id: user.id,
-        property_id: params.propertyId,
-        stand_id: params.standId,
-        date,
-        type: "income",
-        category: "virkesförsäljning",
-        description: `${params.type} – intäkt ${tag}${params.notes ? ` · ${params.notes}` : ""}`,
-        amount: params.income,
-        vat_amount: 0,
-        payment_method: "bank",
-        status: "booked",
-      });
-    }
-    if (params.cost > 0) {
-      rows.push({
-        user_id: user.id,
-        property_id: params.propertyId,
-        stand_id: params.standId,
-        date,
-        type: "expense",
-        category: params.type,
-        description: `${params.type} – kostnad ${tag}${params.notes ? ` · ${params.notes}` : ""}`,
-        amount: params.cost,
-        vat_amount: 0,
-        payment_method: "bank",
-        status: "booked",
-      });
-    }
-    if (params.hasSubsidy && params.subsidyAmount > 0) {
-      rows.push({
-        user_id: user.id,
-        property_id: params.propertyId,
-        stand_id: params.standId,
-        date,
-        type: "income",
-        category: "bidrag",
-        description: `${params.type} – bidrag ${tag}`,
-        amount: params.subsidyAmount,
-        vat_amount: 0,
-        payment_method: "bank",
-        status: "booked",
-      });
-    }
-    if (rows.length > 0) {
-      const { error: txErr } = await supabase.from("transactions").insert(rows);
-      if (txErr) toast.error("Kunde inte synka bokföring: " + txErr.message);
-    }
+    const vatAmount = params.applyVat ? Math.round(params.income * params.vatRate) : 0;
+    const res = await syncActivityEconomicImpact({
+      userId: user.id,
+      activityId: params.activityId,
+      propertyId: params.propertyId,
+      standId: params.standId,
+      type: params.type,
+      isCompleted: params.isCompleted,
+      completedDate: params.completedDate,
+      plannedDate: params.plannedDate,
+      income: params.income,
+      cost: params.cost,
+      vatAmount,
+      applyVat: params.applyVat,
+      vatRate: params.vatRate,
+      subsidyAmount: params.subsidyAmount,
+      hasSubsidy: params.hasSubsidy,
+      notes: params.notes,
+      paymentStatus: params.paymentStatus,
+      paymentDate: params.paymentDate,
+      bankAccountId: params.bankAccountId,
+      forestAccountId: params.forestAccountId,
+    });
+    if (!res.ok && res.error) toast.error("Synk misslyckades: " + res.error);
     queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    queryClient.invalidateQueries({ queryKey: ["economic_events"] });
+    queryClient.invalidateQueries({ queryKey: ["bank_accounts"] });
+    queryClient.invalidateQueries({ queryKey: ["forest_liquidity_accounts"] });
   };
 
   const handleAddActivity = async () => {
@@ -342,6 +320,13 @@ export default function Skogsbruksplan() {
       }
     }
 
+    // Tvinga val av betalningshantering om aktiviteten är genomförd och har ekonomi
+    const hasMoney = finalIncome > 0 || costInput > 0 || subsidyInput > 0;
+    if (newAct.is_completed && hasMoney && !newAct.payment_status) {
+      toast.error("Välj hur betalningen hanterades");
+      return;
+    }
+
     // Skapa EN aktivitet, kopplad till primärt bestånd (för bakåtkompatibilitet).
     const primaryForRow = allStandIds[0] ?? null;
     const { data: inserted, error } = await supabase.from("forest_activities").insert({
@@ -383,6 +368,13 @@ export default function Skogsbruksplan() {
       quantity_unit: newAct.quantity_unit || null,
       tree_species: newAct.tree_species || null,
       work_type: newAct.work_type || null,
+      payment_status: newAct.payment_status || "not_paid",
+      payment_date: newAct.payment_date || null,
+      bank_account_id: newAct.bank_account_id || null,
+      forest_account_id: newAct.forest_account_id || null,
+      apply_vat: !!newAct.apply_vat,
+      vat_rate: Number(newAct.vat_rate) || 0.25,
+      vat_amount: newAct.apply_vat ? Math.round(finalIncome * (Number(newAct.vat_rate) || 0.25)) : 0,
     } as any).select().single();
     if (error || !inserted) { toast.error("Kunde inte spara: " + (error?.message ?? "okänt fel")); return; }
 
@@ -428,6 +420,12 @@ export default function Skogsbruksplan() {
       subsidyAmount: subsidyInput,
       hasSubsidy: !!newAct.has_subsidy,
       notes: newAct.notes || null,
+      paymentStatus: (newAct.payment_status || "not_paid") as PaymentStatus,
+      paymentDate: newAct.payment_date || null,
+      bankAccountId: newAct.bank_account_id || null,
+      forestAccountId: newAct.forest_account_id || null,
+      applyVat: !!newAct.apply_vat,
+      vatRate: Number(newAct.vat_rate) || 0.25,
     });
 
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
@@ -459,9 +457,9 @@ export default function Skogsbruksplan() {
       }
     }
 
-    // Ta bort kopplade auto-genererade bokföringsrader
+    // Ta bort kopplade auto-genererade bokföringsrader och economic_events
     if (user) {
-      await supabase.from("transactions").delete().eq("user_id", user.id).like("description", `%[FA:${activityId}]%`);
+      await deleteActivityEconomicImpact(user.id, activityId);
     }
 
     const { error } = await supabase.from("forest_activities").delete().eq("id", activityId);
@@ -516,7 +514,7 @@ export default function Skogsbruksplan() {
       }
     }
 
-    // Synka bokföring efter statusändring
+    // Synka bokföring efter statusändring (använd lagrad payment_status; default historical om saknas)
     await syncActivityTransactions({
       activityId: activity.id,
       propertyId: activity.property_id,
@@ -530,6 +528,12 @@ export default function Skogsbruksplan() {
       subsidyAmount: activity.subsidy_amount || 0,
       hasSubsidy: !!activity.has_subsidy,
       notes: activity.notes,
+      paymentStatus: ((activity as any).payment_status || "historical_already_paid") as PaymentStatus,
+      paymentDate: (activity as any).payment_date || null,
+      bankAccountId: (activity as any).bank_account_id || null,
+      forestAccountId: (activity as any).forest_account_id || null,
+      applyVat: !!(activity as any).apply_vat,
+      vatRate: Number((activity as any).vat_rate) || 0.25,
     });
 
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
@@ -577,6 +581,13 @@ export default function Skogsbruksplan() {
       is_completed: a.is_completed,
       completed_date: a.completed_date || "",
       affects_forest_plan: a.affects_forest_plan,
+      apply_vat: (a as any).apply_vat || false,
+      vat_rate: String((a as any).vat_rate ?? "0.25"),
+      payment_status: (a as any).payment_status || "",
+      payment_date: (a as any).payment_date || "",
+      bank_account_id: (a as any).bank_account_id || "",
+      forest_account_id: (a as any).forest_account_id || "",
+      forest_account_new_name: "",
     });
     setEditActDialogOpen(true);
   };
@@ -612,6 +623,13 @@ export default function Skogsbruksplan() {
         toast.error(`Uttaget (${harvestedVol} m³sk) överstiger tillgängligt virkesförråd (${availableVol} m³sk)`);
         return;
       }
+    }
+
+    // Tvinga val av betalningshantering om aktiviteten är genomförd och har ekonomi
+    const editHasMoney = finalIncome > 0 || cost > 0 || subsidyAmt > 0;
+    if (nowCompleted && editHasMoney && !editAct.payment_status) {
+      toast.error("Välj hur betalningen hanterades");
+      return;
     }
 
     const { error } = await supabase.from("forest_activities").update({
@@ -652,6 +670,13 @@ export default function Skogsbruksplan() {
       quantity_unit: editAct.quantity_unit || null,
       tree_species: editAct.tree_species || null,
       work_type: editAct.work_type || null,
+      payment_status: editAct.payment_status || "not_paid",
+      payment_date: editAct.payment_date || null,
+      bank_account_id: editAct.bank_account_id || null,
+      forest_account_id: editAct.forest_account_id || null,
+      apply_vat: !!editAct.apply_vat,
+      vat_rate: Number(editAct.vat_rate) || 0.25,
+      vat_amount: editAct.apply_vat ? Math.round(finalIncome * (Number(editAct.vat_rate) || 0.25)) : 0,
     } as any).eq("id", editActId);
     if (error) { toast.error("Kunde inte uppdatera: " + error.message); return; }
 
@@ -698,6 +723,12 @@ export default function Skogsbruksplan() {
       subsidyAmount: subsidyAmt,
       hasSubsidy: !!editAct.has_subsidy,
       notes: editAct.notes || null,
+      paymentStatus: (editAct.payment_status || "not_paid") as PaymentStatus,
+      paymentDate: editAct.payment_date || null,
+      bankAccountId: editAct.bank_account_id || null,
+      forestAccountId: editAct.forest_account_id || null,
+      applyVat: !!editAct.apply_vat,
+      vatRate: Number(editAct.vat_rate) || 0.25,
     });
 
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
@@ -1357,6 +1388,15 @@ export default function Skogsbruksplan() {
                   />
                 )}
 
+                {/* Payment handling — only when marked as completed */}
+                <ActivityPaymentSection
+                  data={newAct}
+                  onChange={setNewAct}
+                  income={Number(newAct.total_revenue) || Number(newAct.estimated_income) || 0}
+                  cost={Number(newAct.estimated_cost) || Number(newAct.total_cost) || 0}
+                  subsidy={newAct.has_subsidy ? Number(newAct.subsidy_amount) || 0 : 0}
+                />
+
                 {/* Ekonomi – only for harvest types that use cost_per_m3sk */}
                 {HARVEST_TYPES.includes(newAct.type) && (
                   <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3">
@@ -1757,6 +1797,15 @@ export default function Skogsbruksplan() {
                 stands={standsForEditAct}
               />
             )}
+
+            {/* Payment handling — only when marked as completed */}
+            <ActivityPaymentSection
+              data={editAct}
+              onChange={setEditAct}
+              income={Number(editAct.total_revenue) || Number(editAct.estimated_income) || 0}
+              cost={Number(editAct.estimated_cost) || Number(editAct.total_cost) || 0}
+              subsidy={editAct.has_subsidy ? Number(editAct.subsidy_amount) || 0 : 0}
+            />
 
             {/* Ekonomi – only for harvest types */}
             {HARVEST_TYPES.includes(editAct.type) && (
