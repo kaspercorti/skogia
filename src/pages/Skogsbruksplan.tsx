@@ -500,7 +500,7 @@ export default function Skogsbruksplan() {
       }
     }
 
-    // Synka bokföring efter statusändring
+    // Synka bokföring efter statusändring (använd lagrad payment_status; default historical om saknas)
     await syncActivityTransactions({
       activityId: activity.id,
       propertyId: activity.property_id,
@@ -514,6 +514,12 @@ export default function Skogsbruksplan() {
       subsidyAmount: activity.subsidy_amount || 0,
       hasSubsidy: !!activity.has_subsidy,
       notes: activity.notes,
+      paymentStatus: ((activity as any).payment_status || "historical_already_paid") as PaymentStatus,
+      paymentDate: (activity as any).payment_date || null,
+      bankAccountId: (activity as any).bank_account_id || null,
+      forestAccountId: (activity as any).forest_account_id || null,
+      applyVat: !!(activity as any).apply_vat,
+      vatRate: Number((activity as any).vat_rate) || 0.25,
     });
 
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
