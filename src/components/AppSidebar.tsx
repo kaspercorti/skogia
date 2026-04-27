@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, BookOpen, FileText, TreePine, TrendingUp, Calculator, BarChart3, Link, LogOut,
+  LayoutDashboard, BookOpen, FileText, TreePine, TrendingUp, Calculator, BarChart3, Link, LogOut, Wallet,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -15,6 +15,7 @@ const navItems = [
   { icon: BookOpen, label: "Bokföring", url: "/bokforing" },
   { icon: FileText, label: "Fakturering", url: "/fakturering" },
   { icon: TreePine, label: "Skogsbruksplan", url: "/skogsbruksplan" },
+  { icon: Wallet, label: "Skogslikvidkonton", url: "/skogslikvidkonton" },
   { icon: TrendingUp, label: "Prognoser", url: "/prognoser" },
   { icon: Calculator, label: "Skatteplanering", url: "/skatteplanering" },
   { icon: BarChart3, label: "Rapporter", url: "/rapporter" },
