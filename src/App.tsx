@@ -13,6 +13,7 @@ import Prognoser from "./pages/Prognoser";
 import Skatteplanering from "./pages/Skatteplanering";
 import Rapporter from "./pages/Rapporter";
 import Integrationer from "./pages/Integrationer";
+import Skogslikvidkonton from "./pages/Skogslikvidkonton";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ function AppRoutes() {
               <Route path="/skatteplanering" element={<Skatteplanering />} />
               <Route path="/rapporter" element={<Rapporter />} />
               <Route path="/integrationer" element={<Integrationer />} />
+              <Route path="/skogslikvidkonton" element={<Skogslikvidkonton />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
