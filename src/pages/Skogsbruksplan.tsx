@@ -695,6 +695,12 @@ export default function Skogsbruksplan() {
       subsidyAmount: subsidyAmt,
       hasSubsidy: !!editAct.has_subsidy,
       notes: editAct.notes || null,
+      paymentStatus: (editAct.payment_status || "not_paid") as PaymentStatus,
+      paymentDate: editAct.payment_date || null,
+      bankAccountId: editAct.bank_account_id || null,
+      forestAccountId: editAct.forest_account_id || null,
+      applyVat: !!editAct.apply_vat,
+      vatRate: Number(editAct.vat_rate) || 0.25,
     });
 
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
