@@ -1388,6 +1388,15 @@ export default function Skogsbruksplan() {
                   />
                 )}
 
+                {/* Payment handling — only when marked as completed */}
+                <ActivityPaymentSection
+                  data={newAct}
+                  onChange={setNewAct}
+                  income={Number(newAct.total_revenue) || Number(newAct.estimated_income) || 0}
+                  cost={Number(newAct.estimated_cost) || Number(newAct.total_cost) || 0}
+                  subsidy={newAct.has_subsidy ? Number(newAct.subsidy_amount) || 0 : 0}
+                />
+
                 {/* Ekonomi – only for harvest types that use cost_per_m3sk */}
                 {HARVEST_TYPES.includes(newAct.type) && (
                   <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3">
