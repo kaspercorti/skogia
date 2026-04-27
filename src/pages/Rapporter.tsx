@@ -4,45 +4,57 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useTransactions, useBankAccounts, useInvoices, fmt, calcResultat, calcVat } from "@/hooks/useSkogskollData";
+import { useBankAccounts, useInvoices, fmt } from "@/hooks/useSkogskollData";
+import { useEconomicEvents, useAvailableYears, useEconomicSummary, useForestLiquidityAccounts } from "@/hooks/useEconomicData";
 
 type ReportType = "resultat" | "balans" | "moms" | "deklaration" | null;
 
+const isIncomeType = (t: string) =>
+  t === "forest_sale" || t === "subsidy" || t === "forest_account_withdrawal" || t === "income";
+const isExpenseType = (t: string) => t === "expense";
+
 export default function Rapporter() {
   const [activeReport, setActiveReport] = useState<ReportType>(null);
-  const { data: transactions = [] } = useTransactions();
+  const [year, setYear] = useState<number>(new Date().getFullYear());
+
+  const { data: events = [] } = useEconomicEvents(year);
   const { data: bankAccounts = [] } = useBankAccounts();
+  const { data: forestAccounts = [] } = useForestLiquidityAccounts();
   const { data: invoices = [] } = useInvoices();
-
-  const year = new Date().getFullYear();
-
-  const yearTx = useMemo(() => transactions.filter(t => new Date(t.date).getFullYear() === year), [transactions, year]);
+  const { data: availableYears = [year] } = useAvailableYears();
+  const { summary } = useEconomicSummary(year);
 
   const intaktsKategorier = useMemo(() => {
     const map: Record<string, number> = {};
-    yearTx.filter(t => t.type === "income").forEach(t => {
-      const cat = t.category || "Övrigt";
-      map[cat] = (map[cat] || 0) + t.amount;
+    events.filter(e => e.affects_result && isIncomeType(e.type)).forEach(e => {
+      const cat = e.category || e.type || "Övrigt";
+      map[cat] = (map[cat] || 0) + Number(e.amount);
     });
     return Object.entries(map).map(([namn, belopp]) => ({ namn, belopp }));
-  }, [yearTx]);
+  }, [events]);
 
   const kostnadsKategorier = useMemo(() => {
     const map: Record<string, number> = {};
-    yearTx.filter(t => t.type === "expense").forEach(t => {
-      const cat = t.category || "Övrigt";
-      map[cat] = (map[cat] || 0) + t.amount;
+    events.filter(e => e.affects_result && isExpenseType(e.type)).forEach(e => {
+      const cat = e.category || e.type || "Övrigt";
+      map[cat] = (map[cat] || 0) + Number(e.amount);
     });
     return Object.entries(map).map(([namn, belopp]) => ({ namn, belopp }));
-  }, [yearTx]);
+  }, [events]);
 
-  const totalIntakter = intaktsKategorier.reduce((s, r) => s + r.belopp, 0);
-  const totalKostnader = kostnadsKategorier.reduce((s, r) => s + r.belopp, 0);
-  const resultat = totalIntakter - totalKostnader;
+  const totalIntakter = summary.income;
+  const totalKostnader = summary.expense;
+  const resultat = summary.result;
 
-  const totalTillgangar = bankAccounts.reduce((s, a) => s + a.current_balance, 0) + invoices.filter(i => i.status !== "paid").reduce((s, i) => s + i.amount_inc_vat, 0);
+  const totalBank = bankAccounts.reduce((s, a) => s + Number(a.current_balance), 0);
+  const totalForestAccounts = forestAccounts.reduce((s, a) => s + Number(a.remaining_amount), 0);
+  const openReceivables = invoices.filter(i => i.status !== "paid").reduce((s, i) => s + Number(i.amount_inc_vat), 0);
+  const totalTillgangar = totalBank + totalForestAccounts + openReceivables;
 
-  const vat = calcVat(transactions, year);
+  // VAT only from events with vat_amount
+  const vatIn = events.filter(e => isIncomeType(e.type)).reduce((s, e) => s + Number(e.vat_amount || 0), 0);
+  const vatOut = events.filter(e => isExpenseType(e.type)).reduce((s, e) => s + Number(e.vat_amount || 0), 0);
+  const vat = { inVat: vatIn, outVat: vatOut, netVat: vatIn - vatOut };
 
   const REPORTS: { type: ReportType; label: string; icon: React.ReactNode; desc: string; color: string }[] = [
     { type: "resultat", label: "Resultaträkning", icon: <FileText className="h-6 w-6" />, desc: "Intäkter, kostnader och resultat", color: "text-primary" },
@@ -61,6 +73,12 @@ export default function Rapporter() {
       content += `\n  Summa kostnader: ${fmt(totalKostnader)}\n\n  RESULTAT: ${fmt(resultat)}\n`;
     } else if (activeReport === "moms") {
       content += `  Utgående moms: ${fmt(vat.inVat)}\n  Ingående moms: ${fmt(vat.outVat)}\n\n  Moms att betala: ${fmt(vat.netVat)}\n`;
+    } else if (activeReport === "balans") {
+      content += "BANKKONTON\n";
+      bankAccounts.forEach(a => { content += `  ${a.bank_name} – ${a.account_name ?? ""}: ${fmt(Number(a.current_balance))}\n`; });
+      content += "\nSKOGSLIKVIDKONTON\n";
+      forestAccounts.forEach(a => { content += `  ${a.name}: ${fmt(Number(a.remaining_amount))}\n`; });
+      content += `\nÖppna fordringar: ${fmt(openReceivables)}\n\nTOTALT: ${fmt(totalTillgangar)}\n`;
     }
     const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -78,14 +96,28 @@ export default function Rapporter() {
           <CheckCircle2 className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <p className="font-display text-lg md:text-xl font-bold text-foreground">Rapporter baserade på bokföringsdata ✅</p>
-          <p className="text-sm text-muted-foreground">Alla belopp beräknas från dina transaktioner.</p>
+          <p className="font-display text-lg md:text-xl font-bold text-foreground">Rapporter baserade på faktiska ekonomiska händelser ✅</p>
+          <p className="text-sm text-muted-foreground">Allt synkas automatiskt från skogsaktiviteter, fakturor och betalningar.</p>
         </div>
       </div>
 
-      <div className="flex items-center gap-3 mb-6">
-        <BarChart3 className="h-7 w-7 text-primary" />
-        <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">Rapporter</h1>
+      <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
+        <div className="flex items-center gap-3">
+          <BarChart3 className="h-7 w-7 text-primary" />
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">Rapporter</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Räkenskapsår</span>
+          <select
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+            className="bg-card border border-border rounded-lg px-3 py-1.5 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            {availableYears.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -94,7 +126,7 @@ export default function Rapporter() {
           <p className={cn("text-lg font-bold tabular-nums", resultat >= 0 ? "text-primary" : "text-destructive")}>{fmt(resultat)}</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground mb-1">Banksaldo</p>
+          <p className="text-xs text-muted-foreground mb-1">Tillgångar totalt</p>
           <p className="text-lg font-bold tabular-nums text-card-foreground">{fmt(totalTillgangar)}</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
@@ -140,6 +172,9 @@ export default function Rapporter() {
               <div>
                 <h4 className="text-sm font-semibold text-card-foreground mb-2">Intäkter</h4>
                 <Table><TableBody>
+                  {intaktsKategorier.length === 0 && (
+                    <TableRow><TableCell colSpan={2} className="text-sm text-muted-foreground py-1.5">Inga intäkter registrerade {year}</TableCell></TableRow>
+                  )}
                   {intaktsKategorier.map(r => (
                     <TableRow key={r.namn}><TableCell className="text-sm py-1.5">{r.namn}</TableCell><TableCell className="text-right text-sm tabular-nums font-medium text-primary py-1.5">{fmt(r.belopp)}</TableCell></TableRow>
                   ))}
@@ -149,6 +184,9 @@ export default function Rapporter() {
               <div>
                 <h4 className="text-sm font-semibold text-card-foreground mb-2">Kostnader</h4>
                 <Table><TableBody>
+                  {kostnadsKategorier.length === 0 && (
+                    <TableRow><TableCell colSpan={2} className="text-sm text-muted-foreground py-1.5">Inga kostnader registrerade {year}</TableCell></TableRow>
+                  )}
                   {kostnadsKategorier.map(r => (
                     <TableRow key={r.namn}><TableCell className="text-sm py-1.5">{r.namn}</TableCell><TableCell className="text-right text-sm tabular-nums font-medium py-1.5">{fmt(r.belopp)}</TableCell></TableRow>
                   ))}
@@ -168,15 +206,48 @@ export default function Rapporter() {
               <div>
                 <h4 className="text-sm font-semibold text-card-foreground mb-2">Bankkonton</h4>
                 <Table><TableBody>
+                  {bankAccounts.length === 0 && (
+                    <TableRow><TableCell colSpan={2} className="text-sm text-muted-foreground py-1.5">Inga bankkonton</TableCell></TableRow>
+                  )}
                   {bankAccounts.map(a => (
-                    <TableRow key={a.id}><TableCell className="text-sm py-1.5">{a.bank_name} – {a.account_name}</TableCell><TableCell className="text-right text-sm tabular-nums font-medium py-1.5">{fmt(a.current_balance)}</TableCell></TableRow>
+                    <TableRow key={a.id}><TableCell className="text-sm py-1.5">{a.bank_name} – {a.account_name}</TableCell><TableCell className="text-right text-sm tabular-nums font-medium py-1.5">{fmt(Number(a.current_balance))}</TableCell></TableRow>
                   ))}
                 </TableBody></Table>
               </div>
-              <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 flex justify-between items-center">
-                <span className="font-display font-semibold text-card-foreground">Totalt banksaldo</span>
-                <span className="text-xl font-bold tabular-nums text-primary">{fmt(bankAccounts.reduce((s, a) => s + a.current_balance, 0))}</span>
+
+              <div>
+                <h4 className="text-sm font-semibold text-card-foreground mb-2">Skogslikvidkonton</h4>
+                <Table><TableBody>
+                  {forestAccounts.length === 0 && (
+                    <TableRow><TableCell colSpan={2} className="text-sm text-muted-foreground py-1.5">Inga skogslikvidkonton</TableCell></TableRow>
+                  )}
+                  {forestAccounts.map(a => (
+                    <TableRow key={a.id}>
+                      <TableCell className="text-sm py-1.5">
+                        {a.name}
+                        {a.expiry_date && (
+                          <span className="text-xs text-muted-foreground ml-2">förfaller {a.expiry_date}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right text-sm tabular-nums font-medium py-1.5">{fmt(Number(a.remaining_amount))}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody></Table>
               </div>
+
+              <div>
+                <h4 className="text-sm font-semibold text-card-foreground mb-2">Öppna fordringar</h4>
+                <div className="text-sm text-muted-foreground flex justify-between px-3 py-2">
+                  <span>Obetalda fakturor</span>
+                  <span className="tabular-nums font-medium text-card-foreground">{fmt(openReceivables)}</span>
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 flex justify-between items-center">
+                <span className="font-display font-semibold text-card-foreground">Totala tillgångar</span>
+                <span className="text-xl font-bold tabular-nums text-primary">{fmt(totalTillgangar)}</span>
+              </div>
+              <Button onClick={() => handleExport("balansrapport")} className="w-full gap-2"><Download className="h-4 w-4" />Exportera</Button>
             </div>
           )}
 
@@ -198,19 +269,18 @@ export default function Rapporter() {
             <div className="space-y-4">
               <div className="rounded-lg bg-primary/5 border border-primary/20 p-4 flex items-center gap-3">
                 <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
-                <p className="text-sm text-card-foreground">Alla uppgifter sammanställda från bokföringen.</p>
+                <p className="text-sm text-card-foreground">Underlag baserat på årets ekonomiska händelser.</p>
               </div>
               <Table><TableHeader><TableRow><TableHead>Post</TableHead><TableHead className="text-right">Belopp</TableHead></TableRow></TableHeader>
                 <TableBody>
                   <TableRow><TableCell className="text-sm py-2">Intäkter av näringsverksamhet (skog)</TableCell><TableCell className="text-right text-sm tabular-nums font-medium py-2">{fmt(totalIntakter)}</TableCell></TableRow>
                   <TableRow><TableCell className="text-sm py-2">Kostnader av näringsverksamhet</TableCell><TableCell className="text-right text-sm tabular-nums font-medium py-2">{fmt(totalKostnader)}</TableCell></TableRow>
                   <TableRow><TableCell className="text-sm font-semibold py-2">Resultat före avdrag</TableCell><TableCell className="text-right text-sm tabular-nums font-bold text-primary py-2">{fmt(resultat)}</TableCell></TableRow>
-                  <TableRow><TableCell className="text-sm py-2">Skogsavdrag (max 50%)</TableCell><TableCell className="text-right text-sm tabular-nums font-medium py-2">−{fmt(Math.round(totalIntakter * 0.3))}</TableCell></TableRow>
-                  <TableRow><TableCell className="text-sm py-2">Insättning skogskonto (max 60%)</TableCell><TableCell className="text-right text-sm tabular-nums font-medium py-2">−{fmt(Math.round(totalIntakter * 0.4))}</TableCell></TableRow>
-                  <TableRow><TableCell className="text-sm font-semibold py-2">Beskattningsbar inkomst</TableCell><TableCell className="text-right text-sm tabular-nums font-bold text-accent py-2">{fmt(Math.max(0, resultat - Math.round(totalIntakter * 0.7)))}</TableCell></TableRow>
+                  <TableRow><TableCell className="text-sm py-2">Insatt på skogslikvidkonto {year}</TableCell><TableCell className="text-right text-sm tabular-nums font-medium py-2">−{fmt(summary.forestAccountDeposits)}</TableCell></TableRow>
+                  <TableRow><TableCell className="text-sm font-semibold py-2">Beskattningsbar inkomst (preliminär)</TableCell><TableCell className="text-right text-sm tabular-nums font-bold text-accent py-2">{fmt(Math.max(0, resultat - summary.forestAccountDeposits))}</TableCell></TableRow>
                 </TableBody>
               </Table>
-              <p className="text-xs text-muted-foreground">* Beloppen är beräknade utifrån bokföringen. Kontrollera med din skatterådgivare.</p>
+              <p className="text-xs text-muted-foreground">* Insättningar på skogslikvidkonto skjuter upp beskattning till uttagsåret. Kontrollera med din skatterådgivare.</p>
             </div>
           )}
         </DialogContent>
