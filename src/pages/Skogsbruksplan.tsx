@@ -577,7 +577,13 @@ export default function Skogsbruksplan() {
       is_completed: a.is_completed,
       completed_date: a.completed_date || "",
       affects_forest_plan: a.affects_forest_plan,
-    });
+      apply_vat: (a as any).apply_vat || false,
+      vat_rate: String((a as any).vat_rate ?? "0.25"),
+      payment_status: (a as any).payment_status || "",
+      payment_date: (a as any).payment_date || "",
+      bank_account_id: (a as any).bank_account_id || "",
+      forest_account_id: (a as any).forest_account_id || "",
+      forest_account_new_name: "",
     setEditActDialogOpen(true);
   };
 
