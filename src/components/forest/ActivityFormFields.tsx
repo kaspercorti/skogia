@@ -44,6 +44,15 @@ export type ActivityFormData = {
   is_completed: boolean;
   completed_date: string;
   affects_forest_plan: boolean;
+  // VAT
+  apply_vat: boolean;
+  vat_rate: string; // e.g. "0.25"
+  // Payment handling
+  payment_status: string; // PaymentStatus | ""
+  payment_date: string;
+  bank_account_id: string;
+  forest_account_id: string;
+  forest_account_new_name: string; // when creating a new forest account inline
 };
 
 export const emptyActivityForm: ActivityFormData = {
@@ -55,6 +64,8 @@ export const emptyActivityForm: ActivityFormData = {
   cost_per_ha: "", cost_per_meter: "", total_cost: "", work_description: "", quantity: "", quantity_unit: "",
   tree_species: "", work_type: "",
   is_completed: false, completed_date: "", affects_forest_plan: true,
+  apply_vat: false, vat_rate: "0.25",
+  payment_status: "", payment_date: "", bank_account_id: "", forest_account_id: "", forest_account_new_name: "",
 };
 
 type Stand = { id: string; name: string; volume_m3sk: number | null; area_ha: number };
