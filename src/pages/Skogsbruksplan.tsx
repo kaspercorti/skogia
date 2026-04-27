@@ -221,6 +221,84 @@ export default function Skogsbruksplan() {
     setEditStandId(null);
   };
 
+  // Synka bokföringstransaktioner till en aktivitet. Tar bort tidigare auto-genererade
+  // transaktioner (taggade med [FA:<activityId>] i description) och skapar nya
+  // utifrån aktivitetens nuvarande status. Påverkar bara aktiviteter som är genomförda.
+  const syncActivityTransactions = async (params: {
+    activityId: string;
+    propertyId: string;
+    standId: string | null;
+    type: string;
+    isCompleted: boolean;
+    completedDate: string | null;
+    plannedDate: string | null;
+    income: number;
+    cost: number;
+    subsidyAmount: number;
+    hasSubsidy: boolean;
+    notes: string | null;
+  }) => {
+    if (!user) return;
+    const tag = `[FA:${params.activityId}]`;
+    // Ta bort tidigare auto-genererade rader för denna aktivitet
+    await supabase.from("transactions").delete().eq("user_id", user.id).like("description", `%${tag}%`);
+
+    if (!params.isCompleted) return;
+
+    const date = params.completedDate || params.plannedDate || new Date().toISOString().slice(0, 10);
+    const rows: any[] = [];
+    if (params.income > 0) {
+      rows.push({
+        user_id: user.id,
+        property_id: params.propertyId,
+        stand_id: params.standId,
+        date,
+        type: "income",
+        category: "virkesförsäljning",
+        description: `${params.type} – intäkt ${tag}${params.notes ? ` · ${params.notes}` : ""}`,
+        amount: params.income,
+        vat_amount: 0,
+        payment_method: "bank",
+        status: "booked",
+      });
+    }
+    if (params.cost > 0) {
+      rows.push({
+        user_id: user.id,
+        property_id: params.propertyId,
+        stand_id: params.standId,
+        date,
+        type: "expense",
+        category: params.type,
+        description: `${params.type} – kostnad ${tag}${params.notes ? ` · ${params.notes}` : ""}`,
+        amount: params.cost,
+        vat_amount: 0,
+        payment_method: "bank",
+        status: "booked",
+      });
+    }
+    if (params.hasSubsidy && params.subsidyAmount > 0) {
+      rows.push({
+        user_id: user.id,
+        property_id: params.propertyId,
+        stand_id: params.standId,
+        date,
+        type: "income",
+        category: "bidrag",
+        description: `${params.type} – bidrag ${tag}`,
+        amount: params.subsidyAmount,
+        vat_amount: 0,
+        payment_method: "bank",
+        status: "booked",
+      });
+    }
+    if (rows.length > 0) {
+      const { error: txErr } = await supabase.from("transactions").insert(rows);
+      if (txErr) toast.error("Kunde inte synka bokföring: " + txErr.message);
+    }
+    queryClient.invalidateQueries({ queryKey: ["transactions"] });
+  };
+
   const handleAddActivity = async () => {
     if (!newAct.type || !newAct.property_id || !user) return;
     const isHarvest = HARVEST_TYPES.includes(newAct.type);
@@ -336,6 +414,22 @@ export default function Skogsbruksplan() {
       await supabase.from("forest_activities").update({ plan_updated: true } as any).eq("id", (inserted as any).id);
     }
 
+    // Synka bokföring (intäkt/kostnad/bidrag) om aktiviteten är genomförd
+    await syncActivityTransactions({
+      activityId: (inserted as any).id,
+      propertyId: newAct.property_id,
+      standId: primaryForRow,
+      type: newAct.type === "övrigt" && newAct.custom_type ? newAct.custom_type : newAct.type,
+      isCompleted: !!newAct.is_completed,
+      completedDate: newAct.is_completed ? (newAct.completed_date || new Date().toISOString().slice(0, 10)) : null,
+      plannedDate: newAct.planned_date || null,
+      income: finalIncome,
+      cost: costInput,
+      subsidyAmount: subsidyInput,
+      hasSubsidy: !!newAct.has_subsidy,
+      notes: newAct.notes || null,
+    });
+
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
     queryClient.invalidateQueries({ queryKey: ["stands"] });
     toast.success(allStandIds.length > 1 ? `Aktivitet skapad (kopplad till ${allStandIds.length} bestånd)` : "Aktivitet skapad");
@@ -365,10 +459,16 @@ export default function Skogsbruksplan() {
       }
     }
 
+    // Ta bort kopplade auto-genererade bokföringsrader
+    if (user) {
+      await supabase.from("transactions").delete().eq("user_id", user.id).like("description", `%[FA:${activityId}]%`);
+    }
+
     const { error } = await supabase.from("forest_activities").delete().eq("id", activityId);
     if (error) { toast.error("Kunde inte ta bort: " + error.message); return; }
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
     queryClient.invalidateQueries({ queryKey: ["stands"] });
+    queryClient.invalidateQueries({ queryKey: ["transactions"] });
     toast.success("Aktivitet borttagen");
   };
 
@@ -415,6 +515,22 @@ export default function Skogsbruksplan() {
         toast.success(`Virkesförråd uppdaterat: ${fmt(currentVol)} → ${fmt(Math.max(0, newVol))} m³sk`);
       }
     }
+
+    // Synka bokföring efter statusändring
+    await syncActivityTransactions({
+      activityId: activity.id,
+      propertyId: activity.property_id,
+      standId: activity.stand_id,
+      type: activity.custom_type || activity.type,
+      isCompleted: nowCompleted,
+      completedDate: nowCompleted ? new Date().toISOString().slice(0, 10) : null,
+      plannedDate: activity.planned_date,
+      income: activity.estimated_income || 0,
+      cost: activity.estimated_cost || 0,
+      subsidyAmount: activity.subsidy_amount || 0,
+      hasSubsidy: !!activity.has_subsidy,
+      notes: activity.notes,
+    });
 
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
     queryClient.invalidateQueries({ queryKey: ["stands"] });
@@ -567,6 +683,22 @@ export default function Skogsbruksplan() {
         await supabase.from("forest_activities").update({ plan_updated: nowCompleted && editAct.affects_forest_plan && harvestedVol > 0 } as any).eq("id", editActId);
       }
     }
+
+    // Synka bokföring efter uppdatering
+    await syncActivityTransactions({
+      activityId: editActId,
+      propertyId: editAct.property_id,
+      standId: editAct.stand_id && editAct.stand_id !== "none" ? editAct.stand_id : null,
+      type: editAct.type === "övrigt" && editAct.custom_type ? editAct.custom_type : editAct.type,
+      isCompleted: !!editAct.is_completed,
+      completedDate: editAct.is_completed ? (editAct.completed_date || new Date().toISOString().slice(0, 10)) : null,
+      plannedDate: editAct.planned_date || null,
+      income: finalIncome,
+      cost: cost,
+      subsidyAmount: subsidyAmt,
+      hasSubsidy: !!editAct.has_subsidy,
+      notes: editAct.notes || null,
+    });
 
     queryClient.invalidateQueries({ queryKey: ["forest_activities"] });
     queryClient.invalidateQueries({ queryKey: ["stands"] });
