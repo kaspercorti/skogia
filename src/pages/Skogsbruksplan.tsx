@@ -221,6 +221,84 @@ export default function Skogsbruksplan() {
     setEditStandId(null);
   };
 
+  // Synka bokföringstransaktioner till en aktivitet. Tar bort tidigare auto-genererade
+  // transaktioner (taggade med [FA:<activityId>] i description) och skapar nya
+  // utifrån aktivitetens nuvarande status. Påverkar bara aktiviteter som är genomförda.
+  const syncActivityTransactions = async (params: {
+    activityId: string;
+    propertyId: string;
+    standId: string | null;
+    type: string;
+    isCompleted: boolean;
+    completedDate: string | null;
+    plannedDate: string | null;
+    income: number;
+    cost: number;
+    subsidyAmount: number;
+    hasSubsidy: boolean;
+    notes: string | null;
+  }) => {
+    if (!user) return;
+    const tag = `[FA:${params.activityId}]`;
+    // Ta bort tidigare auto-genererade rader för denna aktivitet
+    await supabase.from("transactions").delete().eq("user_id", user.id).like("description", `%${tag}%`);
+
+    if (!params.isCompleted) return;
+
+    const date = params.completedDate || params.plannedDate || new Date().toISOString().slice(0, 10);
+    const rows: any[] = [];
+    if (params.income > 0) {
+      rows.push({
+        user_id: user.id,
+        property_id: params.propertyId,
+        stand_id: params.standId,
+        date,
+        type: "income",
+        category: "virkesförsäljning",
+        description: `${params.type} – intäkt ${tag}${params.notes ? ` · ${params.notes}` : ""}`,
+        amount: params.income,
+        vat_amount: 0,
+        payment_method: "bank",
+        status: "booked",
+      });
+    }
+    if (params.cost > 0) {
+      rows.push({
+        user_id: user.id,
+        property_id: params.propertyId,
+        stand_id: params.standId,
+        date,
+        type: "expense",
+        category: params.type,
+        description: `${params.type} – kostnad ${tag}${params.notes ? ` · ${params.notes}` : ""}`,
+        amount: params.cost,
+        vat_amount: 0,
+        payment_method: "bank",
+        status: "booked",
+      });
+    }
+    if (params.hasSubsidy && params.subsidyAmount > 0) {
+      rows.push({
+        user_id: user.id,
+        property_id: params.propertyId,
+        stand_id: params.standId,
+        date,
+        type: "income",
+        category: "bidrag",
+        description: `${params.type} – bidrag ${tag}`,
+        amount: params.subsidyAmount,
+        vat_amount: 0,
+        payment_method: "bank",
+        status: "booked",
+      });
+    }
+    if (rows.length > 0) {
+      const { error: txErr } = await supabase.from("transactions").insert(rows);
+      if (txErr) toast.error("Kunde inte synka bokföring: " + txErr.message);
+    }
+    queryClient.invalidateQueries({ queryKey: ["transactions"] });
+  };
+
   const handleAddActivity = async () => {
     if (!newAct.type || !newAct.property_id || !user) return;
     const isHarvest = HARVEST_TYPES.includes(newAct.type);
