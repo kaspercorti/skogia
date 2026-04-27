@@ -457,9 +457,9 @@ export default function Skogsbruksplan() {
       }
     }
 
-    // Ta bort kopplade auto-genererade bokföringsrader
+    // Ta bort kopplade auto-genererade bokföringsrader och economic_events
     if (user) {
-      await supabase.from("transactions").delete().eq("user_id", user.id).like("description", `%[FA:${activityId}]%`);
+      await deleteActivityEconomicImpact(user.id, activityId);
     }
 
     const { error } = await supabase.from("forest_activities").delete().eq("id", activityId);
